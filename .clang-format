@@ -1,0 +1,92 @@
+# STM32项目代码格式化配置
+# 基于您的格式化规则定制
+
+# 基础风格
+BasedOnStyle: LLVM
+
+# 缩进设置
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+# 括号风格设置
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterEnum: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
+  AfterControlStatement: Never
+
+# 函数和语句块设置
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+# 注释设置
+AlignTrailingComments: true
+SpacesBeforeTrailingComments: 2
+ReflowComments: false
+CommentPragmas: "^(NOLINT|NOTE|TODO|FIXME)"
+
+# 行长度限制
+ColumnLimit: 120
+
+# 对齐设置
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: false
+AlignAfterOpenBracket: Align
+AlignOperands: true
+
+# 空格设置
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# 换行设置
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakStringLiterals: false
+
+# 指针对齐
+PointerAlignment: Left
+
+# 头文件包含排序
+SortIncludes: true
+IncludeCategories:
+  - Regex: '^".*\.h"$'
+    Priority: 1
+  - Regex: '^<.*\.h>$'
+    Priority: 2
+  - Regex: "^<.*>$"
+    Priority: 3
+
+# 空行设置
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+
+# 其他设置
+IndentCaseLabels: false
+IndentWrappedFunctionNames: false
+Standard: Cpp11
+DerivePointerAlignment: false
+
+# 禁用自动换行某些内容
+PenaltyBreakComment: 10000
+PenaltyBreakString: 10000
+PenaltyBreakBeforeFirstCallParameter: 1
+PenaltyExcessCharacter: 1000000

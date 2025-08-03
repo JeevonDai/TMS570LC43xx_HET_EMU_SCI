@@ -1,5 +1,6 @@
 .vscode/
 .settings/
+.launches/
 Debug/
 Release/
 *.map
