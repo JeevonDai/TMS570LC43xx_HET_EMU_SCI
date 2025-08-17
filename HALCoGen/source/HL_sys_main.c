@@ -41,7 +41,6 @@
 *
 */
 
-
 /* USER CODE BEGIN (0) */
 /* USER CODE END */
 
@@ -50,6 +49,11 @@
 #include "HL_sys_common.h"
 
 /* USER CODE BEGIN (1) */
+#include "HL_sci.h"
+#include "HL_system.h"
+
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END */
 
 /** @fn void main(void)
@@ -61,16 +65,55 @@
 */
 
 /* USER CODE BEGIN (2) */
+#define SCI_REG sciREG1  // 定义 sci 端口寄存器
+
+#define CNT 5000000
+
+void sci_Printf(char* format, ...);
 /* USER CODE END */
 
 int main(void)
 {
-/* USER CODE BEGIN (3) */
-/* USER CODE END */
+    /* USER CODE BEGIN (3) */
+    int i;
+    int count = 0;
+
+    sciInit();
+    while (1) {
+        count++;                                            // 计数
+        sci_Printf("Hello world, count = %d.\r\n", count);  // 使用自定义 printf 函数输出
+        for (i = 0; i < CNT; i++)
+            ;  // 粗略延时
+    }
+    /* USER CODE END */
 
     return 0;
 }
 
-
 /* USER CODE BEGIN (4) */
+/*
+ * @brief       : 自定义 SCI printf 函数
+ * @param       : 字符串，可实现类似于 printf 的参数输入
+ * @return      : void
+ * @author      : Liu Jiahao
+ * @date        : 2024-03-26
+ * @version     : v1.1
+ * @copyright   : Copyright By Liu Jiahao, All Rights Reserved
+ */
+void sci_Printf(char* format, ...)
+{
+    uint16 i;
+    va_list listdata;
+    uint8 sci_TxBuff[100];
+
+    va_start(listdata, format);
+    vsprintf((char*)sci_TxBuff, format, listdata);
+    va_end(listdata);
+
+    for (i = 0; i < strlen((const char*)sci_TxBuff); i++) {
+        while ((SCI_REG->FLR & 0x04U) == 4U)
+            ;
+        sciSendByte(SCI_REG, sci_TxBuff[i]);
+    }
+}
 /* USER CODE END */
