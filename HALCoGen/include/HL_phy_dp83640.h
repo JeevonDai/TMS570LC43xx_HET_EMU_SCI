@@ -40,6 +40,8 @@
 #ifndef _PHY_DP83640_H_
 #define _PHY_DP83640_H_
 
+#include "HL_sys_common.h"
+
 /* USER CODE BEGIN (0) */
 /* USER CODE END */
 

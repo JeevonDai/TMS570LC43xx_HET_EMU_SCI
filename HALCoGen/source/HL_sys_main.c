@@ -51,6 +51,7 @@
 /* USER CODE BEGIN (1) */
 #include "HL_sci.h"
 #include "HL_system.h"
+#include "jtag_gpio.h"  // JTAG GPIO模拟头文件
 
 #include <stdio.h>
 #include <string.h>
@@ -77,13 +78,82 @@ int main(void)
     /* USER CODE BEGIN (3) */
     int i;
     int count = 0;
+    uint32 idcode = 0;
+    uint8 jtag_test_done = 0;
 
+    // 初始化SCI串口
     sciInit();
+    
+    // 初始化JTAG GPIO
+    JTAG_GPIO_Init();
+    
+    sci_Printf("====================================\r\n");
+    sci_Printf("TMS570LC4357 JTAG GPIO 模拟系统\r\n");
+    sci_Printf("====================================\r\n");
+    sci_Printf("引脚映射:\r\n");
+    sci_Printf("  B3  (N2HET1_22) -> TRST 输出\r\n");
+    sci_Printf("  J4  (N2HET1_23) -> TCK  输出\r\n");
+    sci_Printf("  P1  (N2HET1_24) -> TDI  输出\r\n");
+    sci_Printf("  A9  (N2HET1_27) -> TDO  输入\r\n");
+    sci_Printf("  A3  (N2HET1_29) -> TMS  输出\r\n");
+    sci_Printf("====================================\r\n\r\n");
+    
     while (1) {
-        count++;                                            // 计数
-        sci_Printf("Hello world, count = %d.\r\n", count);  // 使用自定义 printf 函数输出
+        count++;
+        
+        // 每隔一定次数执行一次JTAG测试
+        if (count % 10 == 1 && !jtag_test_done) {
+            sci_Printf("开始JTAG测试...\r\n");
+            
+            // 复位JTAG
+            JTAG_Reset();
+            sci_Printf("  [1] JTAG复位完成\r\n");
+            
+            // 进入空闲状态
+            JTAG_Goto_Idle();
+            sci_Printf("  [2] 进入Run-Test/Idle状态\r\n");
+            
+            // 尝试读取IDCODE
+            idcode = JTAG_Read_DR(32);
+            sci_Printf("  [3] 读取IDCODE: 0x%08X\r\n", idcode);
+            
+            // 解析IDCODE
+            if (idcode != 0 && idcode != 0xFFFFFFFF) {
+                uint32 version = (idcode >> 28) & 0x0F;
+                uint32 part_num = (idcode >> 12) & 0xFFFF;
+                uint32 mfg_id = (idcode >> 1) & 0x7FF;
+                
+                sci_Printf("      - 版本号: 0x%X\r\n", version);
+                sci_Printf("      - 器件型号: 0x%04X\r\n", part_num);
+                sci_Printf("      - 制造商ID: 0x%03X\r\n", mfg_id);
+                
+                if (mfg_id == 0x017) {
+                    sci_Printf("      - 制造商: Texas Instruments\r\n");
+                }
+                sci_Printf("  [✓] JTAG连接成功!\r\n\r\n");
+            } else {
+                sci_Printf("  [×] JTAG连接失败或未连接目标芯片\r\n");
+                sci_Printf("      请检查:\r\n");
+                sci_Printf("      1. 目标芯片是否供电\r\n");
+                sci_Printf("      2. JTAG引脚连接是否正确\r\n");
+                sci_Printf("      3. 两块芯片是否共地\r\n\r\n");
+            }
+            
+            jtag_test_done = 1;  // 只执行一次测试
+        }
+        
+        // 周期性输出心跳信息
+        sci_Printf("运行中, count = %d\r\n", count);
+        
+        // 延时
         for (i = 0; i < CNT; i++)
-            ;  // 粗略延时
+            ;
+            
+        // 重置测试标志，以便定期重新测试
+        if (count >= 100) {
+            count = 0;
+            jtag_test_done = 0;
+        }
     }
     /* USER CODE END */
 
