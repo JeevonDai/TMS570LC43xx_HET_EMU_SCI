@@ -33,198 +33,198 @@
     <FILENAMES>
       <HDRHAL>
         <NAME>HL_hal_stdtypes.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_hal_stdtypes.h</PATH>
+        <PATH>include\HL_hal_stdtypes.h</PATH>
       </HDRHAL>
       <HDRCOMMON>
         <NAME>HL_sys_common.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_common.h</PATH>
+        <PATH>include\HL_sys_common.h</PATH>
       </HDRCOMMON>
       <HDRSYSTEM_R>
         <NAME>HL_reg_system.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_system.h</PATH>
+        <PATH>include\HL_reg_system.h</PATH>
       </HDRSYSTEM_R>
       <HDRFLASH_R>
         <NAME>HL_reg_flash.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_flash.h</PATH>
+        <PATH>include\HL_reg_flash.h</PATH>
       </HDRFLASH_R>
       <HDRTCRAM_R>
         <NAME>HL_reg_l2ramw.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_l2ramw.h</PATH>
+        <PATH>include\HL_reg_l2ramw.h</PATH>
       </HDRTCRAM_R>
       <HDRVIM_R>
         <NAME>HL_reg_vim.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_vim.h</PATH>
+        <PATH>include\HL_reg_vim.h</PATH>
       </HDRVIM_R>
       <HDRPBIST_R>
         <NAME>HL_reg_pbist.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_pbist.h</PATH>
+        <PATH>include\HL_reg_pbist.h</PATH>
       </HDRPBIST_R>
       <HDRSTC_R>
         <NAME>HL_reg_stc.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_stc.h</PATH>
+        <PATH>include\HL_reg_stc.h</PATH>
       </HDRSTC_R>
       <HDREFC_R>
         <NAME>HL_reg_efc.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_efc.h</PATH>
+        <PATH>include\HL_reg_efc.h</PATH>
       </HDREFC_R>
       <HDRPCR_R>
         <NAME>HL_reg_pcr.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_pcr.h</PATH>
+        <PATH>include\HL_reg_pcr.h</PATH>
       </HDRPCR_R>
       <HDRPMM_R>
         <NAME>HL_reg_pmm.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_pmm.h</PATH>
+        <PATH>include\HL_reg_pmm.h</PATH>
       </HDRPMM_R>
       <HDRDMA_R>
         <NAME>HL_reg_dma.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_dma.h</PATH>
+        <PATH>include\HL_reg_dma.h</PATH>
       </HDRDMA_R>
       <HDRCCM_R>
         <NAME>HL_reg_ccmr5.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_ccmr5.h</PATH>
+        <PATH>include\HL_reg_ccmr5.h</PATH>
       </HDRCCM_R>
       <HDRCORE>
         <NAME>HL_sys_core.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_core.h</PATH>
+        <PATH>include\HL_sys_core.h</PATH>
       </HDRCORE>
       <HDRSYSTEM>
         <NAME>HL_system.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_system.h</PATH>
+        <PATH>include\HL_system.h</PATH>
       </HDRSYSTEM>
       <HDRVIM>
         <NAME>HL_sys_vim.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_vim.h</PATH>
+        <PATH>include\HL_sys_vim.h</PATH>
       </HDRVIM>
       <HDRMPU>
         <NAME>HL_sys_mpu.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_mpu.h</PATH>
+        <PATH>include\HL_sys_mpu.h</PATH>
       </HDRMPU>
       <HDRPMU>
         <NAME>HL_sys_pmu.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_pmu.h</PATH>
+        <PATH>include\HL_sys_pmu.h</PATH>
       </HDRPMU>
       <HDRPCR>
         <NAME>HL_sys_pcr.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_pcr.h</PATH>
+        <PATH>include\HL_sys_pcr.h</PATH>
       </HDRPCR>
       <HDRPMM>
         <NAME>HL_sys_pmm.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_pmm.h</PATH>
+        <PATH>include\HL_sys_pmm.h</PATH>
       </HDRPMM>
       <HDRDMA>
         <NAME>HL_sys_dma.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sys_dma.h</PATH>
+        <PATH>include\HL_sys_dma.h</PATH>
       </HDRDMA>
       <SRCCORE>
         <NAME>HL_sys_core.asm</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_core.asm</PATH>
+        <PATH>source\HL_sys_core.asm</PATH>
       </SRCCORE>
       <SRCINTVECS>
         <NAME>HL_sys_intvecs.asm</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_intvecs.asm</PATH>
+        <PATH>source\HL_sys_intvecs.asm</PATH>
       </SRCINTVECS>
       <SRCMPU>
         <NAME>HL_sys_mpu.asm</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_mpu.asm</PATH>
+        <PATH>source\HL_sys_mpu.asm</PATH>
       </SRCMPU>
       <SRCPMU>
         <NAME>HL_sys_pmu.asm</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_pmu.asm</PATH>
+        <PATH>source\HL_sys_pmu.asm</PATH>
       </SRCPMU>
       <SRCPCR>
         <NAME>HL_sys_pcr.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_pcr.c</PATH>
+        <PATH>source\HL_sys_pcr.c</PATH>
       </SRCPCR>
       <SRCPMM>
         <NAME>HL_sys_pmm.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_pmm.c</PATH>
+        <PATH>source\HL_sys_pmm.c</PATH>
       </SRCPMM>
       <SRCDMA>
         <NAME>HL_sys_dma.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_dma.c</PATH>
+        <PATH>source\HL_sys_dma.c</PATH>
       </SRCDMA>
       <SRCSYSTEM>
         <NAME>HL_system.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_system.c</PATH>
+        <PATH>source\HL_system.c</PATH>
       </SRCSYSTEM>
       <SRCPHANTOM>
         <NAME>HL_sys_phantom.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_phantom.c</PATH>
+        <PATH>source\HL_sys_phantom.c</PATH>
       </SRCPHANTOM>
       <SRCSTARTUP>
         <NAME>HL_sys_startup.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_startup.c</PATH>
+        <PATH>source\HL_sys_startup.c</PATH>
       </SRCSTARTUP>
       <SRCVIM>
         <NAME>HL_sys_vim.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_vim.c</PATH>
+        <PATH>source\HL_sys_vim.c</PATH>
       </SRCVIM>
       <SRCMAIN>
         <NAME>HL_sys_main.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_main.c</PATH>
+        <PATH>source\HL_sys_main.c</PATH>
       </SRCMAIN>
       <SRCNOTIFY>
         <NAME>HL_notification.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_notification.c</PATH>
+        <PATH>source\HL_notification.c</PATH>
       </SRCNOTIFY>
       <SRCCMD>
         <NAME>HL_sys_link.cmd</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_sys_link.cmd</PATH>
+        <PATH>source\HL_sys_link.cmd</PATH>
       </SRCCMD>
       <HDREPC_R>
         <NAME>HL_reg_epc.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_epc.h</PATH>
+        <PATH>include\HL_reg_epc.h</PATH>
       </HDREPC_R>
       <HDRNMPU_R>
         <NAME>HL_reg_nmpu.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_nmpu.h</PATH>
+        <PATH>include\HL_reg_nmpu.h</PATH>
       </HDRNMPU_R>
       <HDRSCM_R>
         <NAME>HL_reg_scm.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_scm.h</PATH>
+        <PATH>include\HL_reg_scm.h</PATH>
       </HDRSCM_R>
       <HDRSDCMMR_R>
         <NAME>HL_reg_sdcmmr.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_sdcmmr.h</PATH>
+        <PATH>include\HL_reg_sdcmmr.h</PATH>
       </HDRSDCMMR_R>
       <HDREPC>
         <NAME>HL_epc.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_epc.h</PATH>
+        <PATH>include\HL_epc.h</PATH>
       </HDREPC>
       <SRCEPC>
         <NAME>HL_epc.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_epc.c</PATH>
+        <PATH>source\HL_epc.c</PATH>
       </SRCEPC>
       <HDRNMPU>
         <NAME>HL_nmpu.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_nmpu.h</PATH>
+        <PATH>include\HL_nmpu.h</PATH>
       </HDRNMPU>
       <SRCNMPU>
         <NAME>HL_nmpu.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_nmpu.c</PATH>
+        <PATH>source\HL_nmpu.c</PATH>
       </SRCNMPU>
       <HDRERRATA>
         <NAME>HL_errata.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_errata.h</PATH>
+        <PATH>include\HL_errata.h</PATH>
       </HDRERRATA>
       <SRCERRATA>
         <NAME>HL_errata.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_errata.c</PATH>
+        <PATH>source\HL_errata.c</PATH>
       </SRCERRATA>
       <HDRTEST>
         <NAME>HL_Test.h</NAME>
       </HDRTEST>
       <SSWFHDRERRATA>
         <NAME>HL_errata_SSWF021_45.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_errata_SSWF021_45.h</PATH>
+        <PATH>include\HL_errata_SSWF021_45.h</PATH>
       </SSWFHDRERRATA>
       <SSWFHDREGERRATA>
         <NAME>HL_errata_SSWF021_45_defs.h</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_errata_SSWF021_45_defs.h</PATH>
+        <PATH>include\HL_errata_SSWF021_45_defs.h</PATH>
       </SSWFHDREGERRATA>
       <SSWFSRCERRATA>
         <NAME>HL_errata_SSWF021_45.c</NAME>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_errata_SSWF021_45.c</PATH>
+        <PATH>source\HL_errata_SSWF021_45.c</PATH>
       </SSWFSRCERRATA>
       <HDRMUX_R>
         <NAME>HL_reg_pinmux.h</NAME>
@@ -264,7 +264,9 @@
       <HDRSCI>
         <NAME>HL_sci.h</NAME>
       </HDRSCI>
-      <SRCSCI/>
+      <SRCSCI>
+        <NAME>HL_sci.c</NAME>
+      </SRCSCI>
       <HDRLIN_R>
         <NAME>HL_reg_lin.h</NAME>
       </HDRLIN_R>
@@ -393,7 +395,9 @@
       <HDREMIF>
         <NAME>HL_emif.h</NAME>
       </HDREMIF>
-      <SRCEMIF/>
+      <SRCEMIF>
+        <NAME>HL_emif.c</NAME>
+      </SRCEMIF>
       <HDRPOM_R>
         <NAME>HL_reg_pom.h</NAME>
       </HDRPOM_R>
@@ -474,23 +478,23 @@
   <PINMUX>
     <FILENAMES>
       <HDRMUX_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_pinmux.h</PATH>
+        <PATH>include\HL_reg_pinmux.h</PATH>
       </HDRMUX_R>
       <HDRMUX>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_pinmux.h</PATH>
+        <PATH>include\HL_pinmux.h</PATH>
       </HDRMUX>
       <SRCMUX>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_pinmux.c</PATH>
+        <PATH>source\HL_pinmux.c</PATH>
       </SRCMUX>
     </FILENAMES>
   </PINMUX>
   <RTI>
     <FILENAMES>
       <HDRRTI_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_rti.h</PATH>
+        <PATH>include\HL_reg_rti.h</PATH>
       </HDRRTI_R>
       <HDRRTI>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_rti.h</PATH>
+        <PATH>include\HL_rti.h</PATH>
       </HDRRTI>
       <SRCRTI>
         <PATH/>
@@ -500,10 +504,10 @@
   <GIO>
     <FILENAMES>
       <HDRGIO_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_gio.h</PATH>
+        <PATH>include\HL_reg_gio.h</PATH>
       </HDRGIO_R>
       <HDRGIO>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_gio.h</PATH>
+        <PATH>include\HL_gio.h</PATH>
       </HDRGIO>
       <SRCGIO>
         <PATH/>
@@ -513,36 +517,36 @@
   <ESM>
     <FILENAMES>
       <HDRESM_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_esm.h</PATH>
+        <PATH>include\HL_reg_esm.h</PATH>
       </HDRESM_R>
       <HDRESM>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_esm.h</PATH>
+        <PATH>include\HL_esm.h</PATH>
       </HDRESM>
       <SRCESM>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\source\HL_esm.c</PATH>
+        <PATH>source\HL_esm.c</PATH>
       </SRCESM>
     </FILENAMES>
   </ESM>
   <SCI>
     <FILENAMES>
       <HDRSCI_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_sci.h</PATH>
+        <PATH>include\HL_reg_sci.h</PATH>
       </HDRSCI_R>
       <HDRSCI>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_sci.h</PATH>
+        <PATH>include\HL_sci.h</PATH>
       </HDRSCI>
       <SRCSCI>
-        <PATH/>
+        <PATH>source\HL_sci.c</PATH>
       </SRCSCI>
     </FILENAMES>
   </SCI>
   <LIN>
     <FILENAMES>
       <HDRLIN_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_lin.h</PATH>
+        <PATH>include\HL_reg_lin.h</PATH>
       </HDRLIN_R>
       <HDRLIN>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_lin.h</PATH>
+        <PATH>include\HL_lin.h</PATH>
       </HDRLIN>
       <SRCLIN>
         <PATH/>
@@ -552,10 +556,10 @@
   <MIBSPI>
     <FILENAMES>
       <HDRMIBSPI_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_mibspi.h</PATH>
+        <PATH>include\HL_reg_mibspi.h</PATH>
       </HDRMIBSPI_R>
       <HDRMIBSPI>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_mibspi.h</PATH>
+        <PATH>include\HL_mibspi.h</PATH>
       </HDRMIBSPI>
       <SRCMIBSPI>
         <PATH/>
@@ -565,10 +569,10 @@
   <SPI>
     <FILENAMES>
       <HDRSPI_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_spi.h</PATH>
+        <PATH>include\HL_reg_spi.h</PATH>
       </HDRSPI_R>
       <HDRSPI>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_spi.h</PATH>
+        <PATH>include\HL_spi.h</PATH>
       </HDRSPI>
       <SRCSPI>
         <PATH/>
@@ -578,10 +582,10 @@
   <CAN>
     <FILENAMES>
       <HDRCAN_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_can.h</PATH>
+        <PATH>include\HL_reg_can.h</PATH>
       </HDRCAN_R>
       <HDRCAN>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_can.h</PATH>
+        <PATH>include\HL_can.h</PATH>
       </HDRCAN>
       <SRCCAN>
         <PATH/>
@@ -591,10 +595,10 @@
   <ADC>
     <FILENAMES>
       <HDRADC_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_adc.h</PATH>
+        <PATH>include\HL_reg_adc.h</PATH>
       </HDRADC_R>
       <HDRADC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_adc.h</PATH>
+        <PATH>include\HL_adc.h</PATH>
       </HDRADC>
       <SRCADC>
         <PATH/>
@@ -604,19 +608,19 @@
   <HET>
     <FILENAMES>
       <STDHDRHET>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\std_nhet.h</PATH>
+        <PATH>include\std_nhet.h</PATH>
       </STDHDRHET>
       <HDRHET_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_het.h</PATH>
+        <PATH>include\HL_reg_het.h</PATH>
       </HDRHET_R>
       <HDRHET>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_het.h</PATH>
+        <PATH>include\HL_het.h</PATH>
       </HDRHET>
       <HDRHTU_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_htu.h</PATH>
+        <PATH>include\HL_reg_htu.h</PATH>
       </HDRHTU_R>
       <HDRHTU>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_htu.h</PATH>
+        <PATH>include\HL_htu.h</PATH>
       </HDRHTU>
       <SRCHET>
         <PATH/>
@@ -626,10 +630,10 @@
   <I2C>
     <FILENAMES>
       <HDRI2C_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_i2c.h</PATH>
+        <PATH>include\HL_reg_i2c.h</PATH>
       </HDRI2C_R>
       <HDRI2C>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_i2c.h</PATH>
+        <PATH>include\HL_i2c.h</PATH>
       </HDRI2C>
       <SRCI2C>
         <PATH/>
@@ -639,31 +643,31 @@
   <EMAC>
     <FILENAMES>
       <HDR1EMAC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_emac.h</PATH>
+        <PATH>include\HL_emac.h</PATH>
       </HDR1EMAC>
       <HDR2EMAC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_hw_emac.h</PATH>
+        <PATH>include\HL_hw_emac.h</PATH>
       </HDR2EMAC>
       <HDR3EMAC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_hw_emac_ctrl.h</PATH>
+        <PATH>include\HL_hw_emac_ctrl.h</PATH>
       </HDR3EMAC>
       <HDR4EMAC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_hw_mdio.h</PATH>
+        <PATH>include\HL_hw_mdio.h</PATH>
       </HDR4EMAC>
       <HDR5EMAC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_hw_reg_access.h</PATH>
+        <PATH>include\HL_hw_reg_access.h</PATH>
       </HDR5EMAC>
       <HDR6EMAC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_mdio.h</PATH>
+        <PATH>include\HL_mdio.h</PATH>
       </HDR6EMAC>
       <HDRPHY>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_phy_dp83640.h</PATH>
+        <PATH>include\HL_phy_dp83640.h</PATH>
       </HDRPHY>
       <HDR2PHY>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_phy_tlk111.h</PATH>
+        <PATH>include\HL_phy_tlk111.h</PATH>
       </HDR2PHY>
       <HDR7EMAC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_emac_phyConfig.h</PATH>
+        <PATH>include\HL_emac_phyConfig.h</PATH>
       </HDR7EMAC>
       <SRC1EMAC>
         <PATH/>
@@ -682,10 +686,10 @@
   <DCC>
     <FILENAMES>
       <HDRDCC_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_dcc.h</PATH>
+        <PATH>include\HL_reg_dcc.h</PATH>
       </HDRDCC_R>
       <HDRDCC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_dcc.h</PATH>
+        <PATH>include\HL_dcc.h</PATH>
       </HDRDCC>
       <SRCDCC>
         <PATH/>
@@ -695,10 +699,10 @@
   <RTP>
     <FILENAMES>
       <HDRRTP_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_rtp.h</PATH>
+        <PATH>include\HL_reg_rtp.h</PATH>
       </HDRRTP_R>
       <HDRRTP>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_rtp.h</PATH>
+        <PATH>include\HL_rtp.h</PATH>
       </HDRRTP>
       <SRCRTP>
         <PATH/>
@@ -708,10 +712,10 @@
   <DMM>
     <FILENAMES>
       <HDRDMM_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_dmm.h</PATH>
+        <PATH>include\HL_reg_dmm.h</PATH>
       </HDRDMM_R>
       <HDRDMM>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_dmm.h</PATH>
+        <PATH>include\HL_dmm.h</PATH>
       </HDRDMM>
       <SRCDMM>
         <PATH/>
@@ -721,23 +725,23 @@
   <EMIF>
     <FILENAMES>
       <HDREMIF_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_emif.h</PATH>
+        <PATH>include\HL_reg_emif.h</PATH>
       </HDREMIF_R>
       <HDREMIF>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_emif.h</PATH>
+        <PATH>include\HL_emif.h</PATH>
       </HDREMIF>
       <SRCEMIF>
-        <PATH/>
+        <PATH>source\HL_emif.c</PATH>
       </SRCEMIF>
     </FILENAMES>
   </EMIF>
   <POM>
     <FILENAMES>
       <HDRPOM_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_pom.h</PATH>
+        <PATH>include\HL_reg_pom.h</PATH>
       </HDRPOM_R>
       <HDRPOM>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_pom.h</PATH>
+        <PATH>include\HL_pom.h</PATH>
       </HDRPOM>
       <SRCPOM>
         <PATH/>
@@ -747,10 +751,10 @@
   <CRC>
     <FILENAMES>
       <HDRCRC_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_crc.h</PATH>
+        <PATH>include\HL_reg_crc.h</PATH>
       </HDRCRC_R>
       <HDRCRC>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_crc.h</PATH>
+        <PATH>include\HL_crc.h</PATH>
       </HDRCRC>
       <SRCCRC>
         <PATH/>
@@ -760,10 +764,10 @@
   <ETPWM>
     <FILENAMES>
       <HDRETPWM_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_etpwm.h</PATH>
+        <PATH>include\HL_reg_etpwm.h</PATH>
       </HDRETPWM_R>
       <HDRETPWM>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_etpwm.h</PATH>
+        <PATH>include\HL_etpwm.h</PATH>
       </HDRETPWM>
       <SRCETPWM>
         <PATH/>
@@ -773,10 +777,10 @@
   <ECAP>
     <FILENAMES>
       <HDRECAP_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_ecap.h</PATH>
+        <PATH>include\HL_reg_ecap.h</PATH>
       </HDRECAP_R>
       <HDRECAP>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_ecap.h</PATH>
+        <PATH>include\HL_ecap.h</PATH>
       </HDRECAP>
       <SRCECAP>
         <PATH/>
@@ -786,10 +790,10 @@
   <EQEP>
     <FILENAMES>
       <HDREQEP_R>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_reg_eqep.h</PATH>
+        <PATH>include\HL_reg_eqep.h</PATH>
       </HDREQEP_R>
       <HDREQEP>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\HL_eqep.h</PATH>
+        <PATH>include\HL_eqep.h</PATH>
       </HDREQEP>
       <SRCEQEP>
         <PATH/>
@@ -799,28 +803,28 @@
   <FEE>
     <FILENAMES>
       <HDR1FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\Device_TMS570LC43.h</PATH>
+        <PATH>include\Device_TMS570LC43.h</PATH>
       </HDR1FEE>
       <HDR2FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\Device_header.h</PATH>
+        <PATH>include\Device_header.h</PATH>
       </HDR2FEE>
       <HDR3FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\Device_types.h</PATH>
+        <PATH>include\Device_types.h</PATH>
       </HDR3FEE>
       <HDR4FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\ti_fee_cfg.h</PATH>
+        <PATH>include\ti_fee_cfg.h</PATH>
       </HDR4FEE>
       <HDR5FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\MemMap.h</PATH>
+        <PATH>include\MemMap.h</PATH>
       </HDR5FEE>
       <HDR6FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\ti_fee_types.h</PATH>
+        <PATH>include\ti_fee_types.h</PATH>
       </HDR6FEE>
       <HDR7FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\ti_fee.h</PATH>
+        <PATH>include\ti_fee.h</PATH>
       </HDR7FEE>
       <HDR8FEE>
-        <PATH>C:\Users\DYH\workspace\TMS570LC43xx_HET_EMU_SCI\HALCoGen\include\fee_interface.h</PATH>
+        <PATH>include\fee_interface.h</PATH>
       </HDR8FEE>
       <SRC1FEE>
         <PATH/>

@@ -153,6 +153,81 @@ void sciInit(void)
 
 
 
+    /** @b initialize @b SCI3 */
+
+    /** - bring SCI3 out of reset */
+    sciREG3->GCR0 = 0U;
+    sciREG3->GCR0 = 1U;
+
+    /** - Disable all interrupts */
+    sciREG3->CLEARINT    = 0xFFFFFFFFU;
+    sciREG3->CLEARINTLVL = 0xFFFFFFFFU;
+
+    /** - global control 1 */
+    sciREG3->GCR1 =  (uint32)((uint32)1U << 25U)  /* enable transmit */
+                  | (uint32)((uint32)1U << 24U)  /* enable receive */
+                  | (uint32)((uint32)1U << 5U)   /* internal clock (device has no clock pin) */
+                  | (uint32)((uint32)(2U-1U) << 4U)  /* number of stop bits */
+                  | (uint32)((uint32)0U << 3U)  /* even parity, otherwise odd */
+                  | (uint32)((uint32)0U << 2U)  /* enable parity */
+                  | (uint32)((uint32)1U << 1U);  /* asynchronous timing mode */
+
+    /** - set baudrate */
+    sciREG3->BRS = 487U;  /* baudrate */
+
+    /** - transmission length */
+    sciREG3->FORMAT = 8U - 1U;  /* length */
+
+    /** - set SCI3 pins functional mode */
+    sciREG3->PIO0 = (uint32)((uint32)1U << 2U)  /* tx pin */
+                 | (uint32)((uint32)1U << 1U); /* rx pin */
+
+    /** - set SCI3 pins default output value */
+    sciREG3->PIO3 = (uint32)((uint32)1U << 2U)  /* tx pin */
+                 | (uint32)((uint32)0U << 1U); /* rx pin */
+
+    /** - set SCI3 pins output direction */
+    sciREG3->PIO1 = (uint32)((uint32)1U << 2U)  /* tx pin */
+                 | (uint32)((uint32)0U << 1U); /* rx pin */
+
+    /** - set SCI3 pins open drain enable */
+    sciREG3->PIO6 = (uint32)((uint32)0U << 2U)  /* tx pin */
+                 | (uint32)((uint32)0U << 1U); /* rx pin */
+
+    /** - set SCI3 pins pullup/pulldown enable */
+    sciREG3->PIO7 = (uint32)((uint32)0U << 2U)  /* tx pin */
+                 | (uint32)((uint32)0U << 1U); /* rx pin */
+
+    /** - set SCI3 pins pullup/pulldown select */
+    sciREG3->PIO8 = (uint32)((uint32)1U << 2U)  /* tx pin */
+                 | (uint32)((uint32)1U << 1U);  /* rx pin */
+
+    /** - set interrupt level */
+    sciREG3->SETINTLVL = (uint32)((uint32)0U << 26U)  /* Framing error */
+                      | (uint32)((uint32)0U << 25U)  /* Overrun error */
+                      | (uint32)((uint32)0U << 24U)  /* Parity error */
+                      | (uint32)((uint32)0U << 9U)  /* Receive */
+                      | (uint32)((uint32)0U << 8U)  /* Transmit */
+                      | (uint32)((uint32)0U << 1U)  /* Wakeup */
+                      | (uint32)((uint32)0U << 0U);  /* Break detect */
+
+    /** - set interrupt enable */
+    sciREG3->SETINT = (uint32)((uint32)0U << 26U)  /* Framing error */
+                   | (uint32)((uint32)0U << 25U)  /* Overrun error */
+                   | (uint32)((uint32)0U << 24U)  /* Parity error */
+                   | (uint32)((uint32)1U << 9U)  /* Receive */
+                   | (uint32)((uint32)0U << 1U)  /* Wakeup */
+                   | (uint32)((uint32)0U << 0U);  /* Break detect */
+
+    /** - initialize global transfer variables */
+    g_sciTransfer_t[2U].mode   = (uint32)1U << 8U;
+    g_sciTransfer_t[2U].tx_length = 0U;
+	g_sciTransfer_t[2U].rx_length = 0U;
+
+    /** - Finaly start SCI3 */
+    sciREG3->GCR1 |= 0x80U;
+
+
 
 
 /* USER CODE BEGIN (3) */
@@ -677,10 +752,212 @@ void sci1GetConfigValue(sci_config_reg_t *config_reg, config_value_type_t type)
 }
 
 
+/* SourceId : SCI_SourceId_020 */
+/* DesignId : SCI_DesignId_016 */
+/* Requirements : HL_CONQ_SCI_SR25 */
+/** @fn void sci3GetConfigValue(sci_config_reg_t *config_reg, config_value_type_t type)
+*   @brief Get the initial or current values of the SCI3 configuration registers
+*
+*    @param[in] *config_reg: pointer to the struct to which the initial or current 
+*                           value of the configuration registers need to be stored
+*    @param[in] type:     whether initial or current value of the configuration registers need to be stored
+*                        - InitialValue: initial value of the configuration registers will be stored 
+*                                       in the struct pointed by config_reg
+*                        - CurrentValue: initial value of the configuration registers will be stored 
+*                                       in the struct pointed by config_reg
+*
+*   This function will copy the initial or current value (depending on the parameter 'type') 
+*   of the configuration registers to the struct pointed by config_reg
+*
+*/
+
+void sci3GetConfigValue(sci_config_reg_t *config_reg, config_value_type_t type)
+{
+    if (type == InitialValue)
+    {
+        config_reg->CONFIG_GCR0      = SCI3_GCR0_CONFIGVALUE;
+        config_reg->CONFIG_GCR1      = SCI3_GCR1_CONFIGVALUE;
+        config_reg->CONFIG_SETINT    = SCI3_SETINT_CONFIGVALUE;
+        config_reg->CONFIG_SETINTLVL = SCI3_SETINTLVL_CONFIGVALUE;
+        config_reg->CONFIG_FORMAT    = SCI3_FORMAT_CONFIGVALUE;
+        config_reg->CONFIG_BRS       = SCI3_BRS_CONFIGVALUE;
+        config_reg->CONFIG_PIO0      = SCI3_PIO0_CONFIGVALUE;
+        config_reg->CONFIG_PIO1      = SCI3_PIO1_CONFIGVALUE;
+        config_reg->CONFIG_PIO6      = SCI3_PIO6_CONFIGVALUE;
+        config_reg->CONFIG_PIO7      = SCI3_PIO7_CONFIGVALUE;
+        config_reg->CONFIG_PIO8      = SCI3_PIO8_CONFIGVALUE;    
+    }
+    else
+    {
+    /*SAFETYMCUSW 134 S MR:12.2 <APPROVED> "Register read back support" */
+        config_reg->CONFIG_GCR0      = sciREG3->GCR0;
+        config_reg->CONFIG_GCR1      = sciREG3->GCR1; 
+        config_reg->CONFIG_SETINT    = sciREG3->SETINT; 
+        config_reg->CONFIG_SETINTLVL = sciREG3->SETINTLVL; 
+        config_reg->CONFIG_FORMAT    = sciREG3->FORMAT; 
+        config_reg->CONFIG_BRS       = sciREG3->BRS; 
+        config_reg->CONFIG_PIO0      = sciREG3->PIO0; 
+        config_reg->CONFIG_PIO1      = sciREG3->PIO1; 
+        config_reg->CONFIG_PIO6      = sciREG3->PIO6; 
+        config_reg->CONFIG_PIO7      = sciREG3->PIO7;     
+        config_reg->CONFIG_PIO8      = sciREG3->PIO8; 
+    }
+}
 
 
 
 
+/* SourceId : SCI_SourceId_026 */
+/* DesignId : SCI_DesignId_017 */
+/* Requirements : HL_CONQ_SCI_SR20, HL_CONQ_SCI_SR21 */
+/** @fn void sci3HighLevelInterrupt(void)
+*   @brief  Level 0 Interrupt for SCI3
+*/
+#pragma CODE_STATE(sci3HighLevelInterrupt, 32)
+#pragma INTERRUPT(sci3HighLevelInterrupt, IRQ)
+void sci3HighLevelInterrupt(void)
+{
+    uint32 vec = sciREG3->INTVECT0;
+	uint8 byte;
+/* USER CODE BEGIN (37) */
+/* USER CODE END */
+
+    switch (vec)
+    {
+    case 1U:
+        sciNotification(sciREG3, (uint32)SCI_WAKE_INT);
+        break;
+    case 3U:
+        sciNotification(sciREG3, (uint32)SCI_PE_INT);
+        break;
+    case 6U:
+        sciNotification(sciREG3, (uint32)SCI_FE_INT);
+        break;
+    case 7U:
+        sciNotification(sciREG3, (uint32)SCI_BREAK_INT);
+        break;
+    case 9U:
+        sciNotification(sciREG3, (uint32)SCI_OE_INT);
+        break;
+
+    case 11U:
+        /* receive */
+        byte = (uint8)(sciREG3->RD & 0x000000FFU);
+
+            if (g_sciTransfer_t[2U].rx_length > 0U)
+            {
+                *g_sciTransfer_t[2U].rx_data = byte;
+                g_sciTransfer_t[2U].rx_data++;
+                g_sciTransfer_t[2U].rx_length--;
+                if (g_sciTransfer_t[2U].rx_length == 0U)
+                {
+                    sciNotification(sciREG3, (uint32)SCI_RX_INT);
+                }
+            }
+        
+        break;
+
+    case 12U:
+        /* transmit */
+		/*SAFETYMCUSW 30 S MR:12.2,12.3 <APPROVED> "Used for data count in Transmit/Receive polling and Interrupt mode" */
+		--g_sciTransfer_t[2U].tx_length;
+        if (g_sciTransfer_t[2U].tx_length > 0U)
+        {
+			uint8 txdata = *g_sciTransfer_t[2U].tx_data;
+            sciREG3->TD = (uint32)txdata;
+            g_sciTransfer_t[2U].tx_data++;
+        }
+        else
+        {
+            sciREG3->CLEARINT = (uint32)SCI_TX_INT;
+            sciNotification(sciREG3, (uint32)SCI_TX_INT);
+        }
+        break;
+
+    default:
+        /* phantom interrupt, clear flags and return */
+        sciREG3->FLR = sciREG3->SETINTLVL & 0x07000303U;
+         break;
+    }
+/* USER CODE BEGIN (38) */
+/* USER CODE END */
+}
+
+/* SourceId : SCI_SourceId_027 */
+/* DesignId : SCI_DesignId_017 */
+/* Requirements : HL_CONQ_SCI_SR20, HL_CONQ_SCI_SR21 */
+/** @fn void sciLowLevelInterrupt(void)
+*   @brief Level 1 Interrupt for SCI3
+*/
+#pragma CODE_STATE(sciLowLevelInterrupt, 32)
+#pragma INTERRUPT(sciLowLevelInterrupt, IRQ)
+void sciLowLevelInterrupt(void)
+{
+    uint32 vec = sciREG3->INTVECT1;
+	uint8 byte;
+/* USER CODE BEGIN (39) */
+/* USER CODE END */
+
+    switch (vec)
+    {
+    case 1U:
+        sciNotification(sciREG3, (uint32)SCI_WAKE_INT);
+        break;
+    case 3U:
+        sciNotification(sciREG3, (uint32)SCI_PE_INT);
+        break;
+    case 6U:
+        sciNotification(sciREG3, (uint32)SCI_FE_INT);
+        break;
+    case 7U:
+        sciNotification(sciREG3, (uint32)SCI_BREAK_INT);
+        break;
+    case 9U:
+        sciNotification(sciREG3, (uint32)SCI_OE_INT);
+        break;
+
+    case 11U:
+        /* receive */
+        byte = (uint8)(sciREG3->RD & 0x000000FFU);
+
+            if (g_sciTransfer_t[2U].rx_length > 0U)
+            {
+                *g_sciTransfer_t[2U].rx_data = byte;
+                g_sciTransfer_t[2U].rx_data++;
+                g_sciTransfer_t[2U].rx_length--;
+                if (g_sciTransfer_t[2U].rx_length == 0U)
+                {
+                    sciNotification(sciREG3, (uint32)SCI_RX_INT);
+                }
+            }
+        
+        break;
+
+    case 12U:
+        /* transmit */
+		/*SAFETYMCUSW 30 S MR:12.2,12.3 <APPROVED> "Used for data count in Transmit/Receive polling and Interrupt mode" */
+		--g_sciTransfer_t[2U].tx_length;
+        if (g_sciTransfer_t[2U].tx_length > 0U)
+        {
+			uint8 txdata = *g_sciTransfer_t[2U].tx_data;
+            sciREG3->TD = (uint32)txdata;
+            g_sciTransfer_t[2U].tx_data++;
+        }
+        else
+        {
+            sciREG3->CLEARINT = (uint32)SCI_TX_INT;
+            sciNotification(sciREG3, (uint32)SCI_TX_INT);
+        }
+        break;
+
+    default:
+        /* phantom interrupt, clear flags and return */
+        sciREG3->FLR = sciREG3->SETINTLVL & 0x07000303U;
+         break;
+    }
+/* USER CODE BEGIN (40) */
+/* USER CODE END */
+}
 
 
 /* USER CODE BEGIN (45) */

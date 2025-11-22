@@ -41,6 +41,7 @@
 *
 */
 
+
 /* USER CODE BEGIN (0) */
 /* USER CODE END */
 
@@ -74,10 +75,17 @@ void sci_Printf(char* format, ...);
 
 int main(void)
 {
-    /* USER CODE BEGIN (3) */
+/* USER CODE BEGIN (3) */
     int i;
     int count = 0;
 
+    emif_SDRAMInit();
+    volatile uint32 *p = (volatile uint32*)0x80000000;
+
+    for (i = 0; i < 16; i++)
+    {
+        *p++ = '0' + i;
+    }
     sciInit();
     while (1) {
         count++;                                            // 计数
@@ -89,6 +97,7 @@ int main(void)
 
     return 0;
 }
+
 
 /* USER CODE BEGIN (4) */
 /*
