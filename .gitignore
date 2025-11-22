@@ -10,3 +10,4 @@ Release/
 *.o
 *.obj
 *.exe
+.clangd
