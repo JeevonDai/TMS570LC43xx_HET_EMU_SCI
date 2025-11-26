@@ -98,13 +98,13 @@ int main(void)
     // sci_Printf("  P1  (N2HET1_24) -> TDI  输出\r\n");
     // sci_Printf("  A9  (N2HET1_27) -> TDO  输入\r\n");
     // sci_Printf("  A3  (N2HET1_29) -> TMS  输出\r\n");
-    sci_Printf("====================================\r\n\r\n");
     
     while (1) {
         count++;
         
         // 每隔一定次数执行一次 JTAG 测试
         if (count % 10 == 1 && !jtag_test_done) {
+            sci_Printf("\r\n\r\n====================================\r\n\r\n");
             sci_Printf("开始 JTAG 测试...\r\n");
             
             // 复位 JTAG
@@ -116,7 +116,7 @@ int main(void)
             sci_Printf("  [2] 进入 Run-Test/Idle 状态\r\n");
             
             /* 从 Idle -> Select-DR-Scan */
-            JTAG_Shift_Bit(1, 0);
+            JTAG_From_Idle_To_Select_DR_Scan();
             
             idcode = JTAG_Read_DR_Pause(32);
             sci_Printf("  [3] 读取 ICEPick IDCODE: 0x%08X\r\n", idcode);
@@ -124,7 +124,7 @@ int main(void)
             jtag_test_done = 1;  // 只执行一次测试
             // 解析 IDCODE
             if (idcode == 0 || idcode == 0xFFFFFFFF) {
-                sci_Printf("  [×] JTAG 连接失败或未连接目标芯片\r\n");
+                sci_Printf("  [✗] JTAG 连接失败或未连接目标芯片\r\n");
                 sci_Printf("      请检查:\r\n");
                 sci_Printf("      1. 目标芯片是否供电\r\n");
                 sci_Printf("      2. JTAG 引脚连接是否正确\r\n");
@@ -143,11 +143,80 @@ int main(void)
             if (mfg_id == 0x017) {
                 sci_Printf("      - 制造商：Texas Instruments\r\n");
             }
-            sci_Printf("  [✓] ICEPick 连接成功!\r\n\r\n");
+            sci_Printf("  [✓] JTAG 已连接！\r\n\r\n");
             
             sci_Printf("  [4] 开始通过 ICEPick 路由到 DAP...\r\n");
 
-            // sci_Printf("  [✓] DAP 路由配置完成\r\n");
+            // 发送 CONNECT 指令
+            if (JTAG_ICEPick_Connect()) {
+                sci_Printf("      - CONNECT 指令已发送\r\n");
+                
+                // 读取 DCON 寄存器验证
+                uint32 dcon = JTAG_ICEPick_Read_DCON();
+                sci_Printf("      - DCON 寄存器值：0x%02X\r\n", dcon);
+                
+                // 检查连接状态
+                uint32 connect_key = dcon & 0x0F;
+                if (connect_key == 0x09) {  // 1001b
+                    sci_Printf("  [✓] ICEPick 已连接！(CONNECTKEY = 1001b)\r\n\r\n");
+                } else {
+                    sci_Printf("  [✗] ICEPick 未连接 (CONNECTKEY = 0x%X)\r\n\r\n", connect_key);
+                }
+            }
+
+            // 发送 ROUTE 指令
+            JTAG_From_Pause_To_Select_DR_Scan();
+            JTAG_Write_IR_Pause(0x2, 6);
+
+            JTAG_From_Pause_To_Select_DR_Scan();
+            JTAG_Write_DR_Pause(0xA0002108, 32);
+
+            JTAG_From_Pause_To_Select_DR_Scan();
+
+            JTAG_Write_IR_Pause(0x3F, 6);
+            
+            // 先从 Pause-IR 回到 Idle，然后在 Idle 状态等待 10 个时钟
+            JTAG_From_Pause_To_Idle();
+            
+            // 在 Run-Test/Idle 状态下等待 10 个时钟周期
+            // 让硬件有时间将 SDTAP0 加入扫描链
+            JTAG_Set_TMS(0);  // 确保停留在 Idle 状态
+            for (i = 0; i < 10; i++)
+            {
+                JTAG_Clock_Pulse();
+            }
+
+            sci_Printf("  [5] 读取 DAP (CPU) IDCODE...\r\n");
+
+            // 从 Idle 状态进入 Select-DR-Scan
+            JTAG_From_Idle_To_Select_DR_Scan();
+
+            // 读取 DR（默认 IDCODE 指令）
+            // 注意：需要读取 32+1=33 位（32 位 IDCODE + 1 位 ICEPick bypass）
+            uint32 dap_idcode_raw = JTAG_Read_DR_Pause(33);
+
+            // 提取实际的 IDCODE（前 32 位）
+            uint32 dap_idcode = dap_idcode_raw & 0xFFFFFFFF;
+
+            sci_Printf("      - DAP IDCODE: 0x%08X\r\n", dap_idcode);
+
+            // 解析 DAP IDCODE
+            if (dap_idcode != 0 && dap_idcode != 0xFFFFFFFF) {
+                uint32 dap_version = (dap_idcode >> 28) & 0x0F;
+                uint32 dap_part = (dap_idcode >> 12) & 0xFFFF;
+                uint32 dap_mfg = (dap_idcode >> 1) & 0x7FF;
+                
+                sci_Printf("      - 版本号：0x%X\r\n", dap_version);
+                sci_Printf("      - 器件型号：0x%04X\r\n", dap_part);
+                sci_Printf("      - 制造商 ID: 0x%03X\r\n", dap_mfg);
+                
+                if (dap_mfg == 0x23B) {
+                    sci_Printf("      - 制造商：ARM CoreSight\r\n");
+                }
+                sci_Printf("  [✓] DAP (CPU) IDCODE 读取成功！\r\n\r\n");
+            } else {
+                sci_Printf("  [✗] DAP IDCODE 读取失败\r\n\r\n");
+            }
         }
         
         // 周期性输出心跳信息

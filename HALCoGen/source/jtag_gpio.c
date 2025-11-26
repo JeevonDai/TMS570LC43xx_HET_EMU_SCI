@@ -125,7 +125,7 @@ void JTAG_Clock_Pulse(void)
     
     /* TCK 低电平 */
     JTAG_Set_TCK(0);
-    for (delay = 0; delay < 5; delay++);  /* 延时 */
+    for (delay = 0; delay < 10; delay++);  /* 延时 */
     
     /* TCK 高电平 */
     JTAG_Set_TCK(1);
@@ -133,7 +133,7 @@ void JTAG_Clock_Pulse(void)
     
     /* TCK 低电平 */
     JTAG_Set_TCK(0);
-    for (delay = 0; delay < 5; delay++);  /* 延时 */
+    for (delay = 0; delay < 10; delay++);  /* 延时 */
 }
 
 /**
@@ -176,7 +176,7 @@ uint32 JTAG_Shift_Bit(uint32 tms, uint32 tdi)
     JTAG_Set_TCK(0);
     JTAG_Set_TMS(tms);
     JTAG_Set_TDI(tdi);
-    for (delay = 0; delay < 5; delay++);
+    for (delay = 0; delay < 10; delay++);
     
     /* TCK 上升沿，采样 TDO */
     JTAG_Set_TCK(1);
@@ -185,7 +185,7 @@ uint32 JTAG_Shift_Bit(uint32 tms, uint32 tdi)
     
     /* TCK 下降沿 */
     JTAG_Set_TCK(0);
-    for (delay = 0; delay < 5; delay++);
+    for (delay = 0; delay < 10; delay++);
     
     return tdo;
 }
@@ -260,13 +260,10 @@ uint32 JTAG_Read_DR_Pause(uint32 dr_len) {
     JTAG_Shift_Bit(0, 0);
     
     /* Capture-DR -> Shift-DR 进入移位状态，同时读取第一位 */
-    /* 关键：第一个有效数据位会在 Capture-DR -> Shift-DR 的时钟沿出现在 TDO */
-    /* 必须立即读取，否则会丢失第一位数据！ */
     tdo = JTAG_Shift_Bit(0, 0);
-    ret |= (tdo << 0);  /* 正确读取第一位 bit[0] */
     
     /* 在 Shift-DR 状态继续移位并读取剩余数据 */
-    for (i = 1; i < dr_len - 1; i++)  /* 从 i=1 开始，因为 bit[0] 已读取 */
+    for (i = 0; i < dr_len - 1; i++)  /* 从 i=1 开始，因为 bit[0] 已读取 */
     {
         tdo = JTAG_Shift_Bit(0, 0);  /* TMS=0 保持在 Shift-DR */
         ret |= (tdo << i);
@@ -316,4 +313,49 @@ uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len) {
 }
 
 /* USER CODE BEGIN (3) */
+/**
+ * @brief 连接到 ICEPick TAP
+ * @return 1 表示成功，0 表示失败
+ */
+ uint32 JTAG_ICEPick_Connect(void) {
+    // 1. 从 Pause-DR 回到 Idle (如果当前在 Pause 状态)
+    JTAG_From_Pause_To_Idle();
+    
+    // 2. Idle -> Select-DR-Scan
+    JTAG_Shift_Bit(1, 0);
+    
+    // 3. 写入 CONNECT 指令 (000111b = 0x07) 到 IR
+    uint32 old_ir = JTAG_Write_IR_Pause(0x07, 6);
+    
+    // 4. 回到 Select-DR-Scan 准备写 DR
+    JTAG_From_Pause_To_Select_DR_Scan();
+    
+    // 5. 写入 Debug Connect Register (DCON)
+    //    bit[7] = 1: 写使能 (WRITEENABLE)
+    //    bit[3:0] = 1001b: 连接密钥 (CONNECTKEY)
+    //    完整值：0x89 = 10001001b
+    JTAG_Write_DR_Pause(0x89, 8);
+    
+    return 1;
+}
+
+/**
+ * @brief 读取 ICEPick 连接状态
+ * @return DCON 寄存器的值
+ */
+uint32 JTAG_ICEPick_Read_DCON(void) {
+    uint32 dcon_value;
+    
+    // 6. 准备读 DR
+    JTAG_From_Pause_To_Select_DR_Scan();
+    
+    // 7. 写入读命令 (bit[7]=0 表示读操作)
+    JTAG_Write_DR_Pause(0x00, 8);
+    
+    // 8. 再次进入 Shift-DR 读取实际值
+    JTAG_From_Pause_To_Select_DR_Scan();
+    dcon_value = JTAG_Read_DR_Pause(8);
+    
+    return dcon_value;
+}
 /* USER CODE END */
