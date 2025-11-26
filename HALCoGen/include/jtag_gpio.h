@@ -146,38 +146,19 @@ void JTAG_Goto_Idle(void);
  */
 uint32 JTAG_Shift_Bit(uint32 tms, uint32 tdi);
 
-/**
- * @brief JTAG移位多位数据
- * @param[in] tms - TMS信号值数组（最后一位可能需要特殊处理）
- * @param[in] tdi_data - 要发送的TDI数据
- * @param[in] bit_count - 数据位数
- * @param[out] tdo_data - 接收的TDO数据（可以为NULL如果不需要读取）
- * @return void
- */
-void JTAG_Shift_Data(uint32 tms, uint32 tdi_data, uint32 bit_count, uint32* tdo_data);
+uint32 JTAG_Write_DR_Pause(uint32 dr_value, uint32 dr_len);
 
-/**
- * @brief JTAG写IR寄存器
- * @param[in] ir_value - 指令寄存器值
- * @param[in] ir_len - 指令长度（位数）
- * @return void
- */
-void JTAG_Write_IR(uint32 ir_value, uint32 ir_len);
+uint32 JTAG_Read_DR_Pause(uint32 dr_len);
 
-/**
- * @brief JTAG写DR寄存器
- * @param[in] dr_value - 数据寄存器值
- * @param[in] dr_len - 数据长度（位数）
- * @return void
- */
-void JTAG_Write_DR(uint32 dr_value, uint32 dr_len);
+uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len);
 
-/**
- * @brief JTAG读DR寄存器
- * @param[in] dr_len - 数据长度（位数）
- * @return uint32 - 读取的DR值
- */
-uint32 JTAG_Read_DR(uint32 dr_len);
+uint32 JTAG_Read_IR_Pause(uint32 ir_len);
+
+void JTAG_From_Idle_To_Select_DR_Scan();
+
+void JTAG_From_Pause_To_Select_DR_Scan();
+
+void JTAG_From_Pause_To_Idle();
 
 /* USER CODE BEGIN (2) */
 /* USER CODE END */

@@ -23,9 +23,9 @@ BraceWrapping:
 
 # 函数和语句块设置
 AllowShortFunctionsOnASingleLine: None
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: OnlyFirstIf
 AllowShortLoopsOnASingleLine: false
-AllowShortBlocksOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
 
 # 注释设置
@@ -38,17 +38,17 @@ CommentPragmas: "^(NOLINT|NOTE|TODO|FIXME)"
 ColumnLimit: 120
 
 # 对齐设置
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
 AlignAfterOpenBracket: Align
-AlignOperands: true
+AlignOperands: Align
 
 # 空格设置
 SpaceBeforeParens: ControlStatements
 SpaceAfterCStyleCast: false
 SpaceBeforeAssignmentOperators: true
 SpaceInEmptyParentheses: false
-SpacesInAngles: false
+SpacesInAngles: Never
 SpacesInCStyleCastParentheses: false
 SpacesInContainerLiterals: false
 SpacesInParentheses: false
@@ -66,7 +66,7 @@ BreakStringLiterals: false
 PointerAlignment: Left
 
 # 头文件包含排序
-SortIncludes: true
+SortIncludes: Never
 IncludeCategories:
   - Regex: '^".*\.h"$'
     Priority: 1
@@ -82,7 +82,7 @@ MaxEmptyLinesToKeep: 1
 # 其他设置
 IndentCaseLabels: false
 IndentWrappedFunctionNames: false
-Standard: Cpp11
+Standard: c++11
 DerivePointerAlignment: false
 
 # 禁用自动换行某些内容

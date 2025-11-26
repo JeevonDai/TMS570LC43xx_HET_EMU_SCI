@@ -13,7 +13,8 @@ CompileFlags:
     - -IHALCoGen/include
     # TI 编译器系统头文件路径
     - -isystem
-    - C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include
+    # - C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include
+    - D:/ti/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include
     # 编译器选项
     - -fno-exceptions
     # 定义 TI 编译器宏
