@@ -63,6 +63,43 @@ typedef enum {
 } jtag_state_t;
 
 /* USER CODE BEGIN (1) */
+/**
+ * @brief ARM CoreSight DAP 指令定义
+ */
+#define DAP_IR_ABORT 0x8U  /* ABORT 指令 */
+#define DAP_IR_DPACC 0xAU  /* DPACC 指令 - 访问 DP 寄存器 */
+#define DAP_IR_APACC 0xBU  /* APACC 指令 - 访问 AP 寄存器 */
+#define DAP_IR_IDCODE 0xEU /* IDCODE 指令 */
+#define DAP_IR_BYPASS 0xFU /* BYPASS 指令 */
+
+/**
+ * @brief DP 寄存器地址定义（用于 DPACC）
+ */
+#define DP_ADDR_IDCODE 0x0U    /* IDCODE 寄存器 */
+#define DP_ADDR_ABORT 0x0U     /* ABORT 寄存器（只写）*/
+#define DP_ADDR_CTRL_STAT 0x4U /* CTRL/STAT 寄存器 */
+#define DP_ADDR_SELECT 0x8U    /* SELECT 寄存器 */
+#define DP_ADDR_RDBUFF 0xCU    /* RDBUFF 寄存器（只读）*/
+
+/**
+ * @brief CTRL/STAT 寄存器位定义
+ */
+#define DP_CTRL_CSYSPWRUPREQ (1U << 30) /* 系统电源请求 */
+#define DP_CTRL_CDBGPWRUPREQ (1U << 28) /* 调试电源请求 */
+#define DP_CTRL_CSYSPWRUPACK (1U << 31) /* 系统电源确认 */
+#define DP_CTRL_CDBGPWRUPACK (1U << 29) /* 调试电源确认 */
+
+/**
+ * @brief DPACC 请求类型定义
+ */
+#define DPACC_READ (1U << 0)  /* 读操作 */
+#define DPACC_WRITE (0U << 0) /* 写操作 */
+
+/**
+ * @brief DPACC 响应 ACK 值定义
+ */
+#define DPACC_ACK_OK 0x2U   /* OK/FAULT */
+#define DPACC_ACK_WAIT 0x1U /* WAIT */
 /* USER CODE END */
 
 /**
@@ -161,6 +198,46 @@ void JTAG_From_Pause_To_Select_DR_Scan();
 void JTAG_From_Pause_To_Idle();
 
 /* USER CODE BEGIN (2) */
+/**
+ * @brief ICEPick 连接函数
+ */
+uint32 JTAG_ICEPick_Connect(void);
+uint32 JTAG_ICEPick_Read_DCON(void);
+
+/**
+ * @brief 写 DPACC 寄存器
+ * @param addr DP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 要写入的 32 位数据
+ * @return ACK 响应值
+ */
+uint32 JTAG_DPACC_Write(uint32 addr, uint32 data);
+
+/**
+ * @brief 读 DPACC 寄存器
+ * @param addr DP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ */
+uint32 JTAG_DPACC_Read(uint32 addr, uint32* data);
+
+/**
+ * @brief 初始化 DAP 调试电源
+ * @return 1 表示成功，0 表示失败
+ */
+uint32 JTAG_DAP_PowerUp(void);
+
+/**
+ * @brief 挂起目标 CPU
+ * @return 1 表示成功，0 表示失败
+ */
+uint32 JTAG_DAP_Halt_CPU(void);
+
+/**
+ * @brief 恢复目标 CPU
+ * @return 1 表示成功，0 表示失败
+ */
+uint32 JTAG_DAP_Resume_CPU(void);
+
 /* USER CODE END */
 
 #ifdef __cplusplus

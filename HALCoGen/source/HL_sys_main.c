@@ -214,6 +214,57 @@ int main(void)
                     sci_Printf("      - 制造商：ARM CoreSight\r\n");
                 }
                 sci_Printf("  [✓] DAP (CPU) IDCODE 读取成功！\r\n\r\n");
+
+                // ===== 新增：DPACC 访问测试 =====
+                sci_Printf("  [6] 测试 DPACC 访问...\r\n");
+
+                // 通过 DPACC 读取 IDCODE
+                uint32 dp_idcode = 0;
+                uint32 ack = JTAG_DPACC_Read(DP_ADDR_IDCODE, &dp_idcode);
+                sci_Printf("      - DPACC Read ACK: 0x%X\r\n", ack);
+                sci_Printf("      - DP IDCODE: 0x%08X\r\n", dp_idcode);
+
+                if (ack == 0x2) {  // DPACC_ACK_OK
+                    sci_Printf("  [✓] DPACC 读取成功！\r\n\r\n");
+
+                    // 读取 CTRL/STAT 寄存器
+                    uint32 ctrl_stat = 0;
+                    ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
+                    sci_Printf("  [7] CTRL/STAT 寄存器状态:\r\n");
+                    sci_Printf("      - ACK: 0x%X\r\n", ack);
+                    sci_Printf("      - CTRL/STAT: 0x%08X\r\n", ctrl_stat);
+
+                    // 检查电源状态
+                    uint32 sys_pwr_ack = (ctrl_stat >> 31) & 0x01U;
+                    uint32 dbg_pwr_ack = (ctrl_stat >> 29) & 0x01U;
+                    sci_Printf("      - 系统电源确认:%s\r\n", sys_pwr_ack ? "是" : "否");
+                    sci_Printf("      - 调试电源确认:%s\r\n", dbg_pwr_ack ? "是" : "否");
+
+                    // 如果电源未上电，尝试上电
+                    if (!sys_pwr_ack || !dbg_pwr_ack) {
+                        sci_Printf("\r\n  [8] 正在上电 DAP...\r\n");
+                        if (JTAG_DAP_PowerUp()) {
+                            sci_Printf("  [✓] DAP 上电成功！\r\n");
+
+                            // 重新读取 CTRL/STAT 确认
+                            ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
+                            sci_Printf("      - 上电后 CTRL/STAT: 0x%08X\r\n", ctrl_stat);
+                            sys_pwr_ack = (ctrl_stat >> 31) & 0x01U;
+                            dbg_pwr_ack = (ctrl_stat >> 29) & 0x01U;
+                            sci_Printf("      - 系统电源确认:%s\r\n", sys_pwr_ack ? "是" : "否");
+                            sci_Printf("      - 调试电源确认:%s\r\n\r\n", dbg_pwr_ack ? "是" : "否");
+                        }
+                        else {
+                            sci_Printf("  [✗] DAP 上电失败\r\n\r\n");
+                        }
+                    }
+                    else {
+                        sci_Printf("  [✓] DAP 已经上电\r\n\r\n");
+                    }
+                }
+                else {
+                    sci_Printf("  [✗] DPACC 访问失败 (ACK=0x%X)\r\n\r\n", ack);
+                }
             } else {
                 sci_Printf("  [✗] DAP IDCODE 读取失败\r\n\r\n");
             }

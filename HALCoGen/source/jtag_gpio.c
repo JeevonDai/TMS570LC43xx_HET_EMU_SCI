@@ -358,4 +358,240 @@ uint32 JTAG_ICEPick_Read_DCON(void) {
     
     return dcon_value;
 }
+
+/**
+ * @brief 写 DPACC 寄存器
+ * @param addr DP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 要写入的 32 位数据
+ * @return ACK 响应值
+ * 
+ * DPACC 数据格式（35 位）：
+ * [34:3]  - 写入的 32 位数据
+ * [2]     - RnW 位（0=写，1=读）
+ * [1:0]   - A[3:2] 地址位
+ */
+uint32 JTAG_DPACC_Write(uint32 addr, uint32 data)
+{
+    uint32 i;
+    uint32 request = 0;
+    uint32 ack = 0;
+    uint32 tdo = 0;
+
+    // 构造 DPACC 写请求（35 位）
+    // [1:0] = addr[3:2]
+    // [2] = 0 (写操作)
+    // [34:3] = data[31:0]
+    request = ((addr & 0xC) >> 2);  // A[3:2]
+    // RnW = 0 (写操作) 已经是 0
+
+    // 1. 选择 DPACC 指令
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC, 4);
+
+    // 2. 进入 DR 扫描
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 3. 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 4. 移位前 3 位（地址和 RnW）
+    for (i = 0; i < 3; i++) {
+        uint32 bit = (request >> i) & 0x01U;
+        JTAG_Shift_Bit(0, bit);
+    }
+
+    // 5. 移位 32 位数据
+    for (i = 0; i < 32; i++) {
+        uint32 bit = (data >> i) & 0x01U;
+        if (i == 31) {
+            tdo = JTAG_Shift_Bit(1, bit);  // 最后一位退出
+        }
+        else {
+            JTAG_Shift_Bit(0, bit);
+        }
+    }
+
+    // 6. 到达 Exit1-DR，进入 Pause-DR
+    JTAG_Shift_Bit(0, 0);
+
+    // 7. 读取 ACK（需要再次扫描 DR）
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR 读取 ACK
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 读取前 3 位获取 ACK
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack = tdo & 0x01U;
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack |= (tdo & 0x01U) << 1;
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack |= (tdo & 0x01U) << 2;
+
+    // 完成扫描
+    for (i = 3; i < 34; i++) {
+        if (i == 34) {
+            JTAG_Shift_Bit(1, 0);  // 最后一位退出
+        }
+        else {
+            JTAG_Shift_Bit(0, 0);
+        }
+    }
+
+    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
+
+    return ack;
+}
+
+/**
+ * @brief 读 DPACC 寄存器
+ * @param addr DP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ */
+uint32 JTAG_DPACC_Read(uint32 addr, uint32* data)
+{
+    uint32 i;
+    uint32 request = 0;
+    uint32 ack = 0;
+    uint32 read_data = 0;
+    uint32 tdo = 0;
+
+    // 构造 DPACC 读请求（35 位）
+    // [1:0] = addr[3:2]
+    // [2] = 1 (读操作)
+    request = ((addr & 0xC) >> 2) | (1U << 2);  // A[3:2] + RnW=1
+
+    // 1. 选择 DPACC 指令
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC, 4);
+
+    // 2. 进入 DR 扫描发送读请求
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 移位 35 位（3 位请求 + 32 位数据占位）
+    for (i = 0; i < 35; i++) {
+        uint32 bit = (request >> i) & 0x01U;
+        if (i >= 3) bit = 0;  // 数据位填充 0
+
+        if (i == 34) {
+            JTAG_Shift_Bit(1, bit);  // 最后一位退出
+        }
+        else {
+            JTAG_Shift_Bit(0, bit);
+        }
+    }
+
+    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
+
+    // 3. 再次扫描 DR 获取读取的数据
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 读取前 3 位获取 ACK
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack = tdo & 0x01U;
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack |= (tdo & 0x01U) << 1;
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack |= (tdo & 0x01U) << 2;
+
+    // 读取 32 位数据
+    for (i = 0; i < 32; i++) {
+        if (i == 31) {
+            tdo = JTAG_Shift_Bit(1, 0);  // 最后一位退出
+        }
+        else {
+            tdo = JTAG_Shift_Bit(0, 0);
+        }
+        read_data |= (tdo & 0x01U) << i;
+    }
+
+    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
+
+    if (data != 0) {
+        *data = read_data;
+    }
+
+    return ack;
+}
+
+/**
+ * @brief 初始化 DAP 调试电源
+ * @return 1 表示成功，0 表示失败
+ */
+uint32 JTAG_DAP_PowerUp(void)
+{
+    uint32 ctrl_stat = 0;
+    uint32 ack = 0;
+    uint32 timeout = 1000;
+    uint32 i;
+
+    // 1. 上电请求：设置 CSYSPWRUPREQ 和 CDBGPWRUPREQ
+    ctrl_stat = DP_CTRL_CSYSPWRUPREQ | DP_CTRL_CDBGPWRUPREQ;
+    ack = JTAG_DPACC_Write(DP_ADDR_CTRL_STAT, ctrl_stat);
+
+    if (ack != DPACC_ACK_OK) {
+        return 0;  // 写入失败
+    }
+
+    // 2. 等待上电确认
+    for (i = 0; i < timeout; i++) {
+        ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
+
+        if (ack != DPACC_ACK_OK) {
+            continue;
+        }
+
+        // 检查上电确认位
+        if ((ctrl_stat & DP_CTRL_CSYSPWRUPACK) && (ctrl_stat & DP_CTRL_CDBGPWRUPACK)) {
+            return 1;  // 上电成功
+        }
+
+        // 简单延时
+        volatile uint32 delay;
+        for (delay = 0; delay < 1000; delay++)
+            ;
+    }
+
+    return 0;  // 超时
+}
+
+/**
+ * @brief 挂起目标 CPU（通过 MEM-AP 寄存器）
+ * @return 1 表示成功，0 表示失败
+ * 
+ * 注意：实际的 CPU 挂起需要通过 MEM-AP 访问 Debug Halting Control and Status Register (DHCSR)
+ * 这个函数展示了基本框架，具体实现需要根据目标处理器的调试架构来完成
+ */
+uint32 JTAG_DAP_Halt_CPU(void)
+{
+    // TODO: 需要通过 APACC 访问 MEM-AP
+    // 1. 选择 AP (通过 SELECT 寄存器)
+    // 2. 配置 AP 的 TAR 寄存器指向 DHCSR (通常是 0xE000EDF0)
+    // 3. 通过 DRW 寄存器写入 DHCSR，设置 C_HALT 和 C_DEBUGEN 位
+
+    // 这里只是一个占位符，显示流程
+    return 1;
+}
+
+/**
+ * @brief 恢复目标 CPU
+ * @return 1 表示成功，0 表示失败
+ */
+uint32 JTAG_DAP_Resume_CPU(void)
+{
+    // TODO: 类似 Halt_CPU，但清除 C_HALT 位
+    return 1;
+}
+
 /* USER CODE END */
