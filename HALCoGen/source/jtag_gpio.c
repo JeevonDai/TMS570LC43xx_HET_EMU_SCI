@@ -365,7 +365,10 @@ uint32 JTAG_ICEPick_Read_DCON(void) {
  * @param data 要写入的 32 位数据
  * @return ACK 响应值
  * 
- * DPACC 数据格式（35 位）：
+ * 注意：调用此函数前需要先设置 IR 为 DPACC + ICEPick BYPASS
+ * 
+ * DPACC 数据格式（35 位）+ ICEPick BYPASS（1 位）= 36 位：
+ * [35]    - ICEPick BYPASS 位（填充 0）
  * [34:3]  - 写入的 32 位数据
  * [2]     - RnW 位（0=写，1=读）
  * [1:0]   - A[3:2] 地址位
@@ -385,38 +388,32 @@ uint32 JTAG_DPACC_Write(uint8 addr, uint32 data)
     request = (addr & 0xC) >> 1;  // A[3:2] -> bit[2:1]
     // RnW = 0 (写操作) 已经是 0
 
-    // 1. 选择 DPACC 指令
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_DPACC, 4);
-
-    // 2. 进入 DR 扫描
+    // 进入 DR 扫描（假设已经在 Pause-DR 或 Pause-IR 状态）
     JTAG_From_Pause_To_Select_DR_Scan();
 
-    // 3. 进入 Shift-DR
+    // 进入 Shift-DR
     JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
     JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
 
-    // 4. 移位前 3 位（地址和 RnW）
+    // 移位前 3 位（地址和 RnW）
     for (i = 0; i < 3; i++) {
         uint32 bit = (request >> i) & 0x01U;
         JTAG_Shift_Bit(0, bit);
     }
 
-    // 5. 移位 32 位数据
+    // 移位 32 位数据
     for (i = 0; i < 32; i++) {
         uint32 bit = (data >> i) & 0x01U;
-        if (i == 31) {
-            tdo = JTAG_Shift_Bit(1, bit);  // 最后一位退出
-        }
-        else {
-            JTAG_Shift_Bit(0, bit);
-        }
+        JTAG_Shift_Bit(0, bit);
     }
 
-    // 6. 到达 Exit1-DR，进入 Pause-DR
+    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
+    tdo = JTAG_Shift_Bit(1, 0);
+
+    // 到达 Exit1-DR，进入 Pause-DR
     JTAG_Shift_Bit(0, 0);
 
-    // 7. 读取 ACK（需要再次扫描 DR）
+    // 读取 ACK（需要再次扫描 DR）
     JTAG_From_Pause_To_Select_DR_Scan();
 
     // 进入 Shift-DR 读取 ACK
@@ -431,15 +428,13 @@ uint32 JTAG_DPACC_Write(uint8 addr, uint32 data)
     tdo = JTAG_Shift_Bit(0, 0);
     ack |= (tdo & 0x01U) << 2;
 
-    // 完成扫描
-    for (i = 3; i < 34; i++) {
-        if (i == 34) {
-            JTAG_Shift_Bit(1, 0);  // 最后一位退出
-        }
-        else {
-            JTAG_Shift_Bit(0, 0);
-        }
+    // 完成扫描（32 位数据 + 1 位 bypass）
+    for (i = 3; i < 35; i++) {
+        JTAG_Shift_Bit(0, 0);
     }
+    
+    // 最后一位 ICEPick bypass，退出
+    JTAG_Shift_Bit(1, 0);
 
     JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
 
@@ -451,6 +446,11 @@ uint32 JTAG_DPACC_Write(uint8 addr, uint32 data)
  * @param addr DP 寄存器地址（0x0, 0x4, 0x8, 0xC）
  * @param data 指向接收数据的指针
  * @return ACK 响应值
+ * 
+ * 注意：调用此函数前需要先设置 IR 为 DPACC + ICEPick BYPASS
+ * DPACC 读操作需要两次 DR 扫描：
+ * 1. 第一次发送读请求（36 位：3 位请求 + 32 位占位 + 1 位 bypass）
+ * 2. 第二次获取读取的数据（36 位：3 位 ACK + 32 位数据 + 1 位 bypass）
  */
 uint32 JTAG_DPACC_Read(uint8 addr, uint32* data)
 {
@@ -460,17 +460,16 @@ uint32 JTAG_DPACC_Read(uint8 addr, uint32* data)
     uint32 read_data = 0;
     uint32 tdo = 0;
 
-    // 构造 DPACC 读请求（35 位）
+    // 构造 DPACC 读请求（35 位）+ ICEPick BYPASS（1 位）
     // [0] = 1 (读操作 RnW=1)
     // [1] = addr[2] (A[2])
     // [2] = addr[3] (A[3])
+    // [34:3] = 数据占位（填充 0）
+    // [35] = ICEPick BYPASS（填充 0）
+    // 例如，CTRL/STAT 的 addr 是 0x4 对应的 request 是 01b & 1b = 011b
     request = ((addr & 0xC) >> 1) | 1U;  // A[3:2] -> bit[2:1], RnW=1 -> bit[0]
 
-    // 1. 选择 DPACC 指令
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_DPACC, 4);
-
-    // 2. 进入 DR 扫描发送读请求
+    // 进入 DR 扫描发送读请求（假设已经在 Pause-DR 或 Pause-IR 状态）
     JTAG_From_Pause_To_Select_DR_Scan();
 
     // 进入 Shift-DR
@@ -481,18 +480,15 @@ uint32 JTAG_DPACC_Read(uint8 addr, uint32* data)
     for (i = 0; i < 35; i++) {
         uint32 bit = (request >> i) & 0x01U;
         if (i >= 3) bit = 0;  // 数据位填充 0
-
-        if (i == 34) {
-            JTAG_Shift_Bit(1, bit);  // 最后一位退出
-        }
-        else {
-            JTAG_Shift_Bit(0, bit);
-        }
+        JTAG_Shift_Bit(0, bit);
     }
+
+    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
+    JTAG_Shift_Bit(1, 0);
 
     JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
 
-    // 3. 再次扫描 DR 获取读取的数据
+    // 再次扫描 DR 获取读取的数据
     JTAG_From_Pause_To_Select_DR_Scan();
 
     // 进入 Shift-DR
@@ -509,14 +505,12 @@ uint32 JTAG_DPACC_Read(uint8 addr, uint32* data)
 
     // 读取 32 位数据
     for (i = 0; i < 32; i++) {
-        if (i == 31) {
-            tdo = JTAG_Shift_Bit(1, 0);  // 最后一位退出
-        }
-        else {
-            tdo = JTAG_Shift_Bit(0, 0);
-        }
+        tdo = JTAG_Shift_Bit(0, 0);
         read_data |= (tdo & 0x01U) << i;
     }
+
+    // 读取 1 位 ICEPick BYPASS，最后一位退出
+    JTAG_Shift_Bit(1, 0);
 
     JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
 

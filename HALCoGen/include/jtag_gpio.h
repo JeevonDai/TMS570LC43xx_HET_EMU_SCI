@@ -105,8 +105,7 @@ Bit[3] = 1 Force Active Power and Clock
 /**
  * @brief DP 寄存器地址定义（用于 DPACC）
  */
-#define DP_ADDR_IDCODE 0x0U    /* IDCODE 寄存器 */
-#define DP_ADDR_ABORT 0x0U     /* ABORT 寄存器（只写）*/
+#define DP_ADDR_RESERVE 0x0U     /* ABORT 寄存器（只写）*/
 #define DP_ADDR_CTRL_STAT 0x4U /* CTRL/STAT 寄存器 */
 #define DP_ADDR_SELECT 0x8U    /* SELECT 寄存器 */
 #define DP_ADDR_RDBUFF 0xCU    /* RDBUFF 寄存器（只读）*/

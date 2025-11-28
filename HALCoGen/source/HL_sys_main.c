@@ -222,6 +222,30 @@ int main(void)
         CONTINUE_IF(parse_IDCODE(dap_idcode, "DAP"));
 
         sci_Printf("  [6] 测试 DPACC 访问...\r\n");
+
+        // 设置 DPACC IR（包含 ICEPick BYPASS）
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        
+        // 读取 CTRL/STAT 寄存器（函数内部会处理状态转换）
+        uint32 ctrl_stat = 0;
+        uint32 ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
+        sci_Printf("  [7] CTRL/STAT 寄存器状态:\r\n");
+        sci_Printf("      - ACK: 0x%X\r\n", ack);
+        sci_Printf("      - CTRL/STAT: 0x%08X\r\n", ctrl_stat);
+
+        // 上电 DAP（IR 已经设置为 DPACC，无需再次设置）
+        ack = JTAG_DAP_PowerUp();
+        sci_Printf("      - ACK: 0x%X\r\n", ack);
+        sci_Printf("      - CTRL/STAT: 0x%08X\r\n", ctrl_stat);
+        // 检查电源状态
+        uint32 sys_pwr_ack = (ctrl_stat >> 31) & 0x01U;
+        uint32 dbg_pwr_ack = (ctrl_stat >> 29) & 0x01U;
+        sci_Printf("      - 系统电源确认:%s\r\n", sys_pwr_ack ? "是" : "否");
+        sci_Printf("      - 调试电源确认:%s\r\n", dbg_pwr_ack ? "是" : "否");
+        sci_Printf("  [✓] DPACC 读取成功！\r\n\r\n");
+
     }
     /* USER CODE END */
 
