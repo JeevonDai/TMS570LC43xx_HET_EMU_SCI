@@ -22,28 +22,30 @@ extern "C" {
  * @brief JTAG引脚定义
  * 物理引脚映射到N2HET1引脚
  */
-#define JTAG_TRST_PIN   22U   /* B3  N2HET1_22 -> BMU_M_S_TRST_OUT_R */
-#define JTAG_TCK_PIN    23U   /* J4  N2HET1_23 -> BMU_M_S_TCK_OUT_R  */
-#define JTAG_TDI_PIN    24U   /* P1  N2HET1_24 -> BMU_M_S_TDI_OUT_R  */
-#define JTAG_TDO_PIN    27U   /* A9  N2HET1_27 -> BMU_M_S_TDO_IN_R   */
-#define JTAG_TMS_PIN    29U   /* A3  N2HET1_29 -> BMU_M_S_TMS_OUT_R  */
+#define JTAG_TRST_PIN 22U /* B3  N2HET1_22 -> BMU_M_S_TRST_OUT_R */
+#define JTAG_TCK_PIN 23U  /* J4  N2HET1_23 -> BMU_M_S_TCK_OUT_R  */
+#define JTAG_TDI_PIN 24U  /* P1  N2HET1_24 -> BMU_M_S_TDI_OUT_R  */
+#define JTAG_TDO_PIN 27U  /* A9  N2HET1_27 -> BMU_M_S_TDO_IN_R   */
+#define JTAG_TMS_PIN 29U  /* A3  N2HET1_29 -> BMU_M_S_TMS_OUT_R  */
 
 /* 引脚掩码 */
-#define JTAG_TRST_MASK  (1U << JTAG_TRST_PIN)
-#define JTAG_TCK_MASK   (1U << JTAG_TCK_PIN)
-#define JTAG_TDI_MASK   (1U << JTAG_TDI_PIN)
-#define JTAG_TDO_MASK   (1U << JTAG_TDO_PIN)
-#define JTAG_TMS_MASK   (1U << JTAG_TMS_PIN)
+#define JTAG_TRST_MASK (1U << JTAG_TRST_PIN)
+#define JTAG_TCK_MASK (1U << JTAG_TCK_PIN)
+#define JTAG_TDI_MASK (1U << JTAG_TDI_PIN)
+#define JTAG_TDO_MASK (1U << JTAG_TDO_PIN)
+#define JTAG_TMS_MASK (1U << JTAG_TMS_PIN)
 
 /* 输出引脚组合掩码（除TDO外都是输出） */
-#define JTAG_OUTPUT_PINS (JTAG_TRST_MASK | JTAG_TCK_MASK | JTAG_TDI_MASK | JTAG_TMS_MASK)
+#define JTAG_OUTPUT_PINS                                                       \
+    (JTAG_TRST_MASK | JTAG_TCK_MASK | JTAG_TDI_MASK | JTAG_TMS_MASK)
 /* 输入引脚组合掩码 */
-#define JTAG_INPUT_PINS  (JTAG_TDO_MASK)
+#define JTAG_INPUT_PINS (JTAG_TDO_MASK)
 
 /**
  * @brief JTAG状态机状态定义
  */
-typedef enum {
+typedef enum
+{
     JTAG_STATE_TEST_LOGIC_RESET = 0,
     JTAG_STATE_RUN_TEST_IDLE,
     JTAG_STATE_SELECT_DR_SCAN,
@@ -64,8 +66,36 @@ typedef enum {
 
 /* USER CODE BEGIN (1) */
 /**
+ * @brief ICEPick IR/DR 指令定义
+ */
+#define ICEPICK_IDCODE_LENGTH 32   /* ICEPICK IDCODE 寄存器长度 32bit */
+#define ICEPICK_IR_LENGTH 6      /* ICEPICK IR 指令长度 */
+#define ICEPICK_IR_ROUTE 0x02U   /* ROUTE 指令 */
+#define ICEPICK_IR_IDCODE 0x04U  /* CONNECT 指令 */
+#define ICEPICK_IR_CONNECT 0x07U /* CONNECT 指令 */
+#define ICEPICK_IR_BYPASS 0x3FU  /* BYPASS 指令 */
+
+/* Debug Connect Register (DCON)  */
+#define ICEPICK_DCON_WRITEENABLE 0x80U /* DCON 写使能 bit[7] */
+#define ICEPICK_DCON_CONNECTKEY 0x09U  /* DCON 连接密钥 bit[3:0] */
+#define ICEPICK_DCON_LENGTH 8          /* ICEPICK DCON 寄存器长度 8bit */
+#define ICEPICK_SDTAP0_LENGTH 24       /* ICEPICK DCON 寄存器长度 24bit */
+
+/*
+高 8 位 DCON 配置 0xA0
+bit[31] = 1 写使能
+bit[30:24] = 0100000b 选择 SDTAP0
+低 24 位 SDTAP0 配置 0x002108
+bit[13] = 1 Enable Debug Logic
+bit[8] = 1 Select SDTAP0
+Bit[3] = 1 Force Active Power and Clock
+*/
+#define ICEPICK_DCON_SDTAP0_VALUE 0xA0002108U /* DCON 连接 SDTAP0 指令 */
+
+/**
  * @brief ARM CoreSight DAP 指令定义
  */
+#define DAP_IR_LENGTH 4    /* DAP IR 指令长度 */
 #define DAP_IR_ABORT 0x8U  /* ABORT 指令 */
 #define DAP_IR_DPACC 0xAU  /* DPACC 指令 - 访问 DP 寄存器 */
 #define DAP_IR_APACC 0xBU  /* APACC 指令 - 访问 AP 寄存器 */
@@ -98,8 +128,9 @@ typedef enum {
 /**
  * @brief DPACC 响应 ACK 值定义
  */
-#define DPACC_ACK_OK 0x2U   /* OK/FAULT */
-#define DPACC_ACK_WAIT 0x1U /* WAIT */
+#define DPACC_ACK_OK 0x2U    /* OK/FAULT */
+#define DPACC_ACK_WAIT 0x1U  /* WAIT */
+#define DPACC_ACK_FAULT 0x0U /* FAULT */
 /* USER CODE END */
 
 /**
@@ -201,7 +232,7 @@ void JTAG_From_Pause_To_Idle();
 /**
  * @brief ICEPick 连接函数
  */
-uint32 JTAG_ICEPick_Connect(void);
+void JTAG_ICEPick_Connect(void);
 uint32 JTAG_ICEPick_Read_DCON(void);
 
 /**
@@ -210,7 +241,7 @@ uint32 JTAG_ICEPick_Read_DCON(void);
  * @param data 要写入的 32 位数据
  * @return ACK 响应值
  */
-uint32 JTAG_DPACC_Write(uint32 addr, uint32 data);
+uint32 JTAG_DPACC_Write(uint8 addr, uint32 data);
 
 /**
  * @brief 读 DPACC 寄存器
@@ -218,7 +249,7 @@ uint32 JTAG_DPACC_Write(uint32 addr, uint32 data);
  * @param data 指向接收数据的指针
  * @return ACK 响应值
  */
-uint32 JTAG_DPACC_Read(uint32 addr, uint32* data);
+uint32 JTAG_DPACC_Read(uint8 addr, uint32* data);
 
 /**
  * @brief 初始化 DAP 调试电源
@@ -245,4 +276,3 @@ uint32 JTAG_DAP_Resume_CPU(void);
 #endif /*extern "C" */
 
 #endif /* __JTAG_GPIO_H__ */
-

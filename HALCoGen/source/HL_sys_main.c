@@ -69,26 +69,49 @@
 /* USER CODE BEGIN (2) */
 #define SCI_REG sciREG1  // 定义 sci 端口寄存器
 
-// #define CNT 5000000
-#define CNT 5000000
-
 void sci_Printf(char* format, ...);
+const char* get_manufacturer_name(uint32 mfg_id);
+uint32 parse_IDCODE(uint32 idcode, const char* name);
+#define SUCCESS 0
+#define FAILED 1
+
+#define CONTINUE_IF(condition)                                                 \
+    if (condition) continue;
+
+// 简单字符串版本
+#define CONTINUE_IF_MSG(condition, msg_if_true, msg_if_false)                  \
+    if (condition) {                                                           \
+        sci_Printf(msg_if_true);                                               \
+        continue;                                                              \
+    }                                                                          \
+    else {                                                                     \
+        sci_Printf(msg_if_false);                                              \
+    }
+
+// 完全格式化版本 - 两个分支都支持格式化输出
+#define CONTINUE_IF_MSG_FULL(condition, msg_if_true, msg_if_false, ...)        \
+    if (condition) {                                                           \
+        sci_Printf(msg_if_true, ##__VA_ARGS__);                                \
+        continue;                                                              \
+    }                                                                          \
+    else {                                                                     \
+        sci_Printf(msg_if_false, ##__VA_ARGS__);                               \
+    }
 /* USER CODE END */
 
 int main(void)
 {
     /* USER CODE BEGIN (3) */
-    int i;
-    int count = 0;
+    uint32 i;
+    uint32 count = 0;
     uint32 idcode = 0;
-    uint8 jtag_test_done = 0;
 
     // 初始化 SCI 串口
     sciInit();
-    
+
     // 初始化 JTAG GPIO
     JTAG_GPIO_Init();
-    
+
     // sci_Printf("====================================\r\n");
     // sci_Printf("TMS570LC4357 JTAG GPIO 模拟系统\r\n");
     // sci_Printf("====================================\r\n");
@@ -98,190 +121,107 @@ int main(void)
     // sci_Printf("  P1  (N2HET1_24) -> TDI  输出\r\n");
     // sci_Printf("  A9  (N2HET1_27) -> TDO  输入\r\n");
     // sci_Printf("  A3  (N2HET1_29) -> TMS  输出\r\n");
-    
+
     while (1) {
-        count++;
-        
         // 每隔一定次数执行一次 JTAG 测试
-        if (count % 10 == 1 && !jtag_test_done) {
-            sci_Printf("\r\n\r\n====================================\r\n\r\n");
-            sci_Printf("开始 JTAG 测试...\r\n");
-            
-            // 复位 JTAG
-            JTAG_Reset();
-            sci_Printf("  [1] JTAG 复位完成\r\n");
-            
-            // 进入空闲状态
-            JTAG_Goto_Idle();
-            sci_Printf("  [2] 进入 Run-Test/Idle 状态\r\n");
-            
-            /* 从 Idle -> Select-DR-Scan */
-            JTAG_From_Idle_To_Select_DR_Scan();
-            
-            idcode = JTAG_Read_DR_Pause(32);
-            sci_Printf("  [3] 读取 ICEPick IDCODE: 0x%08X\r\n", idcode);
-            
-            jtag_test_done = 1;  // 只执行一次测试
-            // 解析 IDCODE
-            if (idcode == 0 || idcode == 0xFFFFFFFF) {
-                sci_Printf("  [✗] JTAG 连接失败或未连接目标芯片\r\n");
-                sci_Printf("      请检查:\r\n");
-                sci_Printf("      1. 目标芯片是否供电\r\n");
-                sci_Printf("      2. JTAG 引脚连接是否正确\r\n");
-                sci_Printf("      3. 两块芯片是否共地\r\n\r\n");
-                continue;
+        if (count++ % 1000) {
+            // 延时
+            for (i = 0; i < 500000; i++)
+                ;
+            if (count % 100 == 0) {
+                // 周期性输出心跳信息
+                sci_Printf("运行中 count = %d\r\n", count / 100);
             }
-
-            uint32 version = (idcode >> 28) & 0x0F;
-            uint32 part_num = (idcode >> 12) & 0xFFFF;
-            uint32 mfg_id = (idcode >> 1) & 0x7FF;
-            
-            sci_Printf("      - 版本号：0x%X\r\n", version);
-            sci_Printf("      - 器件型号：0x%04X\r\n", part_num);
-            sci_Printf("      - 制造商 ID: 0x%03X\r\n", mfg_id);
-            
-            if (mfg_id == 0x017) {
-                sci_Printf("      - 制造商：Texas Instruments\r\n");
+            // if(count > 1000000000) {
+            if (count > 10000) {
+                count = 0;
             }
-            sci_Printf("  [✓] JTAG 已连接！\r\n\r\n");
-            
-            sci_Printf("  [4] 开始通过 ICEPick 路由到 DAP...\r\n");
-
-            // 发送 CONNECT 指令
-            if (JTAG_ICEPick_Connect()) {
-                sci_Printf("      - CONNECT 指令已发送\r\n");
-                
-                // 读取 DCON 寄存器验证
-                uint32 dcon = JTAG_ICEPick_Read_DCON();
-                sci_Printf("      - DCON 寄存器值：0x%02X\r\n", dcon);
-                
-                // 检查连接状态
-                uint32 connect_key = dcon & 0x0F;
-                if (connect_key == 0x09) {  // 1001b
-                    sci_Printf("  [✓] ICEPick 已连接！(CONNECTKEY = 1001b)\r\n\r\n");
-                } else {
-                    sci_Printf("  [✗] ICEPick 未连接 (CONNECTKEY = 0x%X)\r\n\r\n", connect_key);
-                }
-            }
-
-            // 发送 ROUTE 指令
-            JTAG_From_Pause_To_Select_DR_Scan();
-            JTAG_Write_IR_Pause(0x2, 6);
-
-            JTAG_From_Pause_To_Select_DR_Scan();
-            JTAG_Write_DR_Pause(0xA0002108, 32);
-
-            JTAG_From_Pause_To_Select_DR_Scan();
-
-            JTAG_Write_IR_Pause(0x3F, 6);
-            
-            // 先从 Pause-IR 回到 Idle，然后在 Idle 状态等待 10 个时钟
-            JTAG_From_Pause_To_Idle();
-            
-            // 在 Run-Test/Idle 状态下等待 10 个时钟周期
-            // 让硬件有时间将 SDTAP0 加入扫描链
-            JTAG_Set_TMS(0);  // 确保停留在 Idle 状态
-            for (i = 0; i < 10; i++)
-            {
-                JTAG_Clock_Pulse();
-            }
-
-            sci_Printf("  [5] 读取 DAP (CPU) IDCODE...\r\n");
-
-            // 从 Idle 状态进入 Select-DR-Scan
-            JTAG_From_Idle_To_Select_DR_Scan();
-
-            // 读取 DR（默认 IDCODE 指令）
-            // 注意：需要读取 32+1=33 位（32 位 IDCODE + 1 位 ICEPick bypass）
-            uint32 dap_idcode_raw = JTAG_Read_DR_Pause(33);
-
-            // 提取实际的 IDCODE（前 32 位）
-            uint32 dap_idcode = dap_idcode_raw & 0xFFFFFFFF;
-
-            sci_Printf("      - DAP IDCODE: 0x%08X\r\n", dap_idcode);
-
-            // 解析 DAP IDCODE
-            if (dap_idcode != 0 && dap_idcode != 0xFFFFFFFF) {
-                uint32 dap_version = (dap_idcode >> 28) & 0x0F;
-                uint32 dap_part = (dap_idcode >> 12) & 0xFFFF;
-                uint32 dap_mfg = (dap_idcode >> 1) & 0x7FF;
-                
-                sci_Printf("      - 版本号：0x%X\r\n", dap_version);
-                sci_Printf("      - 器件型号：0x%04X\r\n", dap_part);
-                sci_Printf("      - 制造商 ID: 0x%03X\r\n", dap_mfg);
-                
-                if (dap_mfg == 0x23B) {
-                    sci_Printf("      - 制造商：ARM CoreSight\r\n");
-                }
-                sci_Printf("  [✓] DAP (CPU) IDCODE 读取成功！\r\n\r\n");
-
-                // ===== 新增：DPACC 访问测试 =====
-                sci_Printf("  [6] 测试 DPACC 访问...\r\n");
-
-                // 通过 DPACC 读取 IDCODE
-                uint32 dp_idcode = 0;
-                uint32 ack = JTAG_DPACC_Read(DP_ADDR_IDCODE, &dp_idcode);
-                sci_Printf("      - DPACC Read ACK: 0x%X\r\n", ack);
-                sci_Printf("      - DP IDCODE: 0x%08X\r\n", dp_idcode);
-
-                if (ack == 0x2) {  // DPACC_ACK_OK
-                    sci_Printf("  [✓] DPACC 读取成功！\r\n\r\n");
-
-                    // 读取 CTRL/STAT 寄存器
-                    uint32 ctrl_stat = 0;
-                    ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
-                    sci_Printf("  [7] CTRL/STAT 寄存器状态:\r\n");
-                    sci_Printf("      - ACK: 0x%X\r\n", ack);
-                    sci_Printf("      - CTRL/STAT: 0x%08X\r\n", ctrl_stat);
-
-                    // 检查电源状态
-                    uint32 sys_pwr_ack = (ctrl_stat >> 31) & 0x01U;
-                    uint32 dbg_pwr_ack = (ctrl_stat >> 29) & 0x01U;
-                    sci_Printf("      - 系统电源确认:%s\r\n", sys_pwr_ack ? "是" : "否");
-                    sci_Printf("      - 调试电源确认:%s\r\n", dbg_pwr_ack ? "是" : "否");
-
-                    // 如果电源未上电，尝试上电
-                    if (!sys_pwr_ack || !dbg_pwr_ack) {
-                        sci_Printf("\r\n  [8] 正在上电 DAP...\r\n");
-                        if (JTAG_DAP_PowerUp()) {
-                            sci_Printf("  [✓] DAP 上电成功！\r\n");
-
-                            // 重新读取 CTRL/STAT 确认
-                            ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
-                            sci_Printf("      - 上电后 CTRL/STAT: 0x%08X\r\n", ctrl_stat);
-                            sys_pwr_ack = (ctrl_stat >> 31) & 0x01U;
-                            dbg_pwr_ack = (ctrl_stat >> 29) & 0x01U;
-                            sci_Printf("      - 系统电源确认:%s\r\n", sys_pwr_ack ? "是" : "否");
-                            sci_Printf("      - 调试电源确认:%s\r\n\r\n", dbg_pwr_ack ? "是" : "否");
-                        }
-                        else {
-                            sci_Printf("  [✗] DAP 上电失败\r\n\r\n");
-                        }
-                    }
-                    else {
-                        sci_Printf("  [✓] DAP 已经上电\r\n\r\n");
-                    }
-                }
-                else {
-                    sci_Printf("  [✗] DPACC 访问失败 (ACK=0x%X)\r\n\r\n", ack);
-                }
-            } else {
-                sci_Printf("  [✗] DAP IDCODE 读取失败\r\n\r\n");
-            }
+            continue;
         }
-        
-        // 周期性输出心跳信息
-        // sci_Printf("运行中 count = %d\r\n", count);
-        
-        // 延时
-        for (i = 0; i < CNT; i++)
-            ;
-            
-        // 重置测试标志，以便定期重新测试
-        if (count >= 100) {
-            count = 0;
-            jtag_test_done = 0;
+        sci_Printf("\r\n\r\n====================================\r\n\r\n");
+        sci_Printf("开始 JTAG 测试...\r\n");
+
+        // 复位 JTAG
+        JTAG_Reset();
+        sci_Printf("  [1] JTAG 复位完成\r\n");
+
+        // 进入空闲状态
+        JTAG_Goto_Idle();
+        sci_Printf("  [2] 进入 Run-Test/Idle 状态\r\n");
+
+        /* 从 Idle -> Select-DR-Scan */
+        JTAG_From_Idle_To_Select_DR_Scan();
+
+        idcode = JTAG_Read_DR_Pause(ICEPICK_IDCODE_LENGTH);
+        sci_Printf("  [3] 读取 ICEPick IDCODE: 0x%08X\r\n", idcode);
+
+        // 解析 IDCODE
+        CONTINUE_IF_MSG(parse_IDCODE(idcode, "ICEPick"),
+                        "      请检查:\r\n"
+                        "      1. 目标芯片是否供电\r\n"
+                        "      2. JTAG 引脚连接是否正确\r\n"
+                        "      3. 两块芯片是否共地\r\n\r\n",
+                        "");
+
+        sci_Printf("  [4] 开始通过 ICEPick 路由到 DAP...\r\n");
+
+        // 发送 CONNECT 指令
+        JTAG_ICEPick_Connect();
+        sci_Printf("      - CONNECT 指令已发送\r\n");
+
+        // 读取 DCON 寄存器验证
+        uint8 dcon = JTAG_ICEPick_Read_DCON();
+        sci_Printf("      - DCON 寄存器值：0x%02X\r\n", dcon);
+
+        // 检查连接状态
+        CONTINUE_IF_MSG_FULL(
+            dcon != ICEPICK_DCON_CONNECTKEY,
+            "  [✗] ICEPick 未连接 (CONNECTKEY = 0x%X)\r\n\r\n",
+            "  [✓] ICEPick 已连接！(CONNECTKEY = 0x%X)\r\n\r\n", dcon);
+
+        // 发送 ROUTE 指令
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(ICEPICK_IR_ROUTE, ICEPICK_IR_LENGTH);
+
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_DR_Pause(ICEPICK_DCON_SDTAP0_VALUE,
+                            ICEPICK_DCON_LENGTH + ICEPICK_SDTAP0_LENGTH);
+
+        JTAG_From_Pause_To_Select_DR_Scan();
+
+        JTAG_Write_IR_Pause(ICEPICK_IR_BYPASS, ICEPICK_IR_LENGTH);
+
+        // 先从 Pause-IR 回到 Idle，然后在 Idle 状态等待 10 个时钟
+        JTAG_From_Pause_To_Idle();
+
+        // 在 Run-Test/Idle 状态下等待 10 个时钟周期
+        // 让硬件有时间将 SDTAP0 加入扫描链
+        JTAG_Set_TMS(0);  // 确保停留在 Idle 状态
+        for (i = 0; i < 10; i++) {
+            JTAG_Clock_Pulse();
         }
+
+        sci_Printf("  [5] 读取 DAP IDCODE...\r\n");
+
+        // 从 Idle 状态进入 Select-DR-Scan
+        JTAG_From_Idle_To_Select_DR_Scan();
+
+        // 读取 DR（默认 IDCODE 指令）并提取实际的 IDCODE（前 32 位）
+        // 注意：是 32+1=33 位（32 位 IDCODE + 1 位 ICEPick BYPASS）
+        uint32 dap_idcode =
+            JTAG_Read_DR_Pause(ICEPICK_IDCODE_LENGTH + 1) & 0xFFFFFFFF;
+
+        // 通过 DAP 读取 IDCODE
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_IDCODE | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+        JTAG_From_Pause_To_Select_DR_Scan();
+        dap_idcode = JTAG_Read_DR_Pause(ICEPICK_IDCODE_LENGTH + 1) & 0xFFFFFFFF;
+        sci_Printf("      - DP IDCODE: 0x%08X\r\n", dap_idcode);
+        CONTINUE_IF(parse_IDCODE(dap_idcode, "DAP"));
+
+        sci_Printf("  [6] 测试 DPACC 访问...\r\n");
     }
     /* USER CODE END */
 
@@ -289,6 +229,58 @@ int main(void)
 }
 
 /* USER CODE BEGIN (4) */
+// 制造商 ID 查找表结构
+typedef struct
+{
+    uint32 mfg_id;
+    const char* name;
+} ManufacturerEntry;
+
+// 制造商 ID 映射表（基于 JEDEC JEP106 标准）
+const ManufacturerEntry ManufacturerTable[] = {
+    {0x017, "Texas Instruments"}, {0x23B, "ARM CoreSight"}, {0x025, "NXP"}
+    // 可以继续添加更多制造商...
+};
+
+// 获取制造商表项数量
+#define MANUFACTURER_TABLE_SIZE                                                \
+    (sizeof(ManufacturerTable) / sizeof(ManufacturerEntry))
+
+// 根据 mfg ID 查找制造商名称
+const char* get_manufacturer_name(uint32 mfg_id)
+{
+    uint32 i;
+    for (i = 0; i < MANUFACTURER_TABLE_SIZE; i++) {
+        if (ManufacturerTable[i].mfg_id == mfg_id) {
+            return ManufacturerTable[i].name;
+        }
+    }
+    return "Unknown";  // 未知制造商
+}
+
+uint32 parse_IDCODE(uint32 idcode, const char* name)
+{
+    sci_Printf("      - IDCODE: 0x%08X\r\n", idcode);
+    if (idcode != 0 && idcode != 0xFFFFFFFF) {
+        uint32 version = (idcode >> 28) & 0x0F;
+        uint32 part = (idcode >> 12) & 0xFFFF;
+        uint32 mfg = (idcode >> 1) & 0x7FF;
+
+        sci_Printf("      - 版本号：0x%X\r\n", version);
+        sci_Printf("      - 器件型号：0x%04X\r\n", part);
+        sci_Printf("      - 制造商 ID: 0x%03X\r\n", mfg);
+        sci_Printf("      - 制造商：%s\r\n", get_manufacturer_name(mfg));
+        sci_Printf("  [✓] %s IDCODE 读取成功！\r\n\r\n", name);
+        return SUCCESS;
+    }
+    else {
+        sci_Printf("  [✗] %s IDCODE 读取失败\r\n\r\n", name);
+        return FAILED;
+    }
+}
+/* USER CODE END */
+
+/* USER CODE BEGIN (5) */
 /*
  * @brief       : 自定义 SCI printf 函数
  * @param       : 字符串，可实现类似于 printf 的参数输入

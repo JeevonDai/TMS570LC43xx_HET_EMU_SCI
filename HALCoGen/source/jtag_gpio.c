@@ -9,6 +9,7 @@
 /* USER CODE END */
 
 #include "jtag_gpio.h"
+#include "HL_hal_stdtypes.h"
 
 /* USER CODE BEGIN (1) */
 /* USER CODE END */
@@ -259,11 +260,11 @@ uint32 JTAG_Read_DR_Pause(uint32 dr_len) {
     /* Select-DR-Scan -> Capture-DR */
     JTAG_Shift_Bit(0, 0);
     
-    /* Capture-DR -> Shift-DR 进入移位状态，同时读取第一位 */
-    tdo = JTAG_Shift_Bit(0, 0);
+    /* Capture-DR -> Shift-DR 进入移位状态 */
+    JTAG_Shift_Bit(0, 0);
     
     /* 在 Shift-DR 状态继续移位并读取剩余数据 */
-    for (i = 0; i < dr_len - 1; i++)  /* 从 i=1 开始，因为 bit[0] 已读取 */
+    for (i = 0; i < dr_len - 1; i++)
     {
         tdo = JTAG_Shift_Bit(0, 0);  /* TMS=0 保持在 Shift-DR */
         ret |= (tdo << i);
@@ -317,7 +318,7 @@ uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len) {
  * @brief 连接到 ICEPick TAP
  * @return 1 表示成功，0 表示失败
  */
- uint32 JTAG_ICEPick_Connect(void) {
+void JTAG_ICEPick_Connect(void) {
     // 1. 从 Pause-DR 回到 Idle (如果当前在 Pause 状态)
     JTAG_From_Pause_To_Idle();
     
@@ -325,7 +326,7 @@ uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len) {
     JTAG_Shift_Bit(1, 0);
     
     // 3. 写入 CONNECT 指令 (000111b = 0x07) 到 IR
-    uint32 old_ir = JTAG_Write_IR_Pause(0x07, 6);
+    JTAG_Write_IR_Pause(ICEPICK_IR_CONNECT, ICEPICK_IR_LENGTH);
     
     // 4. 回到 Select-DR-Scan 准备写 DR
     JTAG_From_Pause_To_Select_DR_Scan();
@@ -334,9 +335,7 @@ uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len) {
     //    bit[7] = 1: 写使能 (WRITEENABLE)
     //    bit[3:0] = 1001b: 连接密钥 (CONNECTKEY)
     //    完整值：0x89 = 10001001b
-    JTAG_Write_DR_Pause(0x89, 8);
-    
-    return 1;
+    JTAG_Write_DR_Pause(ICEPICK_DCON_CONNECTKEY | ICEPICK_DCON_WRITEENABLE, ICEPICK_DCON_LENGTH);
 }
 
 /**
@@ -350,11 +349,12 @@ uint32 JTAG_ICEPick_Read_DCON(void) {
     JTAG_From_Pause_To_Select_DR_Scan();
     
     // 7. 写入读命令 (bit[7]=0 表示读操作)
-    JTAG_Write_DR_Pause(0x00, 8);
+    // 读写操作都是在 Update-DR 阶段，WRITEENABLE=0 不会改变 DCON 值
+    JTAG_Write_DR_Pause(0x00, ICEPICK_DCON_LENGTH);
     
     // 8. 再次进入 Shift-DR 读取实际值
     JTAG_From_Pause_To_Select_DR_Scan();
-    dcon_value = JTAG_Read_DR_Pause(8);
+    dcon_value = JTAG_Read_DR_Pause(ICEPICK_DCON_LENGTH);
     
     return dcon_value;
 }
@@ -370,18 +370,19 @@ uint32 JTAG_ICEPick_Read_DCON(void) {
  * [2]     - RnW 位（0=写，1=读）
  * [1:0]   - A[3:2] 地址位
  */
-uint32 JTAG_DPACC_Write(uint32 addr, uint32 data)
+uint32 JTAG_DPACC_Write(uint8 addr, uint32 data)
 {
     uint32 i;
-    uint32 request = 0;
+    uint8 request = 0;
     uint32 ack = 0;
     uint32 tdo = 0;
 
     // 构造 DPACC 写请求（35 位）
-    // [1:0] = addr[3:2]
-    // [2] = 0 (写操作)
+    // [0] = 0 (写操作 RnW=0)
+    // [1] = addr[2] (A[2])
+    // [2] = addr[3] (A[3])
     // [34:3] = data[31:0]
-    request = ((addr & 0xC) >> 2);  // A[3:2]
+    request = (addr & 0xC) >> 1;  // A[3:2] -> bit[2:1]
     // RnW = 0 (写操作) 已经是 0
 
     // 1. 选择 DPACC 指令
@@ -451,18 +452,19 @@ uint32 JTAG_DPACC_Write(uint32 addr, uint32 data)
  * @param data 指向接收数据的指针
  * @return ACK 响应值
  */
-uint32 JTAG_DPACC_Read(uint32 addr, uint32* data)
+uint32 JTAG_DPACC_Read(uint8 addr, uint32* data)
 {
     uint32 i;
-    uint32 request = 0;
+    uint8 request = 0;
     uint32 ack = 0;
     uint32 read_data = 0;
     uint32 tdo = 0;
 
     // 构造 DPACC 读请求（35 位）
-    // [1:0] = addr[3:2]
-    // [2] = 1 (读操作)
-    request = ((addr & 0xC) >> 2) | (1U << 2);  // A[3:2] + RnW=1
+    // [0] = 1 (读操作 RnW=1)
+    // [1] = addr[2] (A[2])
+    // [2] = addr[3] (A[3])
+    request = ((addr & 0xC) >> 1) | 1U;  // A[3:2] -> bit[2:1], RnW=1 -> bit[0]
 
     // 1. 选择 DPACC 指令
     JTAG_From_Pause_To_Select_DR_Scan();

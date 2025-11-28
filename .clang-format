@@ -35,7 +35,7 @@ ReflowComments: false
 CommentPragmas: "^(NOLINT|NOTE|TODO|FIXME)"
 
 # 行长度限制
-ColumnLimit: 120
+ColumnLimit: 80
 
 # 对齐设置
 AlignConsecutiveAssignments: None
