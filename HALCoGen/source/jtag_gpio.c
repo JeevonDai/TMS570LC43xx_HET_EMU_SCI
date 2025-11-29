@@ -563,31 +563,39 @@ uint32 JTAG_DAP_PowerUp(void)
 }
 
 /**
- * @brief 挂起目标 CPU（通过 MEM-AP 寄存器）
- * @return 1 表示成功，0 表示失败
+ * @brief 挂起目标 CPU（通过 APB-AP 访问 DRCR 寄存器）
+ * @return 0 表示成功，1 表示失败
  * 
- * 注意：实际的 CPU 挂起需要通过 MEM-AP 访问 Debug Halting Control and Status Register (DHCSR)
- * 这个函数展示了基本框架，具体实现需要根据目标处理器的调试架构来完成
+ * 注意：TMS570LC4357 使用 APB-AP 访问 DRCR (Debug Run Control Register)
+ * 这与标准 ARM 实现不同，不使用 MEM-AP
  */
 uint32 JTAG_DAP_Halt_CPU(void)
 {
-    // TODO: 需要通过 APACC 访问 MEM-AP
-    // 1. 选择 AP (通过 SELECT 寄存器)
-    // 2. 配置 AP 的 TAR 寄存器指向 DHCSR (通常是 0xE000EDF0)
-    // 3. 通过 DRW 寄存器写入 DHCSR，设置 C_HALT 和 C_DEBUGEN 位
+    // TODO: 需要通过 APACC 访问 APB-AP
+    // 1. 选择 APB-AP (通过 SELECT 寄存器)
+    // 2. 配置 APB-AP 的 CSW 寄存器（设置访问大小、地址增量等）
+    // 3. 写 TAR 寄存器（设置目标地址为 DRCR 寄存器地址）
+    // 4. 通过 DRW 寄存器写入 DRCR，发送 HALT 请求，使 CPU 进入调试模式
 
     // 这里只是一个占位符，显示流程
-    return 1;
+    return 0;
 }
 
 /**
- * @brief 恢复目标 CPU
- * @return 1 表示成功，0 表示失败
+ * @brief 恢复目标 CPU（通过 APB-AP 访问 DRCR 寄存器）
+ * @return 0 表示成功，1 表示失败
+ * 
+ * 注意：写入 DRCR 的 RESTART 请求位，使 CPU 退出调试模式
  */
 uint32 JTAG_DAP_Resume_CPU(void)
 {
-    // TODO: 类似 Halt_CPU，但清除 C_HALT 位
-    return 1;
+    // TODO: 需要通过 APACC 访问 APB-AP
+    // 1. 选择 APB-AP (通过 SELECT 寄存器)
+    // 2. 配置 APB-AP 的 CSW 寄存器（设置访问大小、地址增量等）
+    // 3. 写 TAR 寄存器（设置目标地址为 DRCR 寄存器地址）
+    // 4. 通过 DRW 寄存器写入 DRCR，发送 RESTART 请求，使 CPU 退出调试模式
+    
+    return 0;
 }
 
 /* USER CODE END */

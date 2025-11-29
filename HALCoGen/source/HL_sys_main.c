@@ -231,7 +231,7 @@ int main(void)
         // 读取 CTRL/STAT 寄存器（函数内部会处理状态转换）
         uint32 ctrl_stat = 0;
         uint32 ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
-        sci_Printf("  [7] CTRL/STAT 寄存器状态:\r\n");
+        sci_Printf("      CTRL/STAT 寄存器状态:\r\n");
         sci_Printf("      - ACK: 0x%X\r\n", ack);
         sci_Printf("      - CTRL/STAT: 0x%08X\r\n", ctrl_stat);
 

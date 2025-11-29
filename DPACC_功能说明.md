@@ -207,7 +207,9 @@ Debug Run Control Register (DRCR) 用于控制 ARM Cortex-R5F 处理器进入和
 - TMS570LC4357 使用 ARM Cortex-R5F 双核架构
 - 每个核心有独立的调试寄存器
 - 需要通过正确的 APB-AP 通道访问对应核心的调试寄存器
-- TI 芯片的调试架构与标准 ARM 实现有所不同，使用 APB-AP 而非 MEM-AP
+- **重要**: TI 芯片的调试架构与标准 ARM 实现不同
+  - **使用 APB-AP** 访问 **DRCR (Debug Run Control Register)**
+  - 这是 TI TMS570 系列特有的调试实现方式
 
 ## 下一步工作
 
