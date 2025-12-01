@@ -522,6 +522,163 @@ uint32 JTAG_DPACC_Read(uint8 addr, uint32* data)
 }
 
 /**
+ * @brief 写 APACC 寄存器
+ * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 指向要写入的 32 位数据指针
+ * @return ACK 响应值
+ * 
+ * 注意：调用此函数前需要先设置 IR 为 APACC + ICEPick BYPASS
+ * APACC 写操作格式与 DPACC 相同：
+ * 写请求包含 35 位 + 1 位 ICEPick BYPASS：
+ * [0] = 0 (写操作 RnW=0)
+ * [1] = addr[2] (A[2])
+ * [2] = addr[3] (A[3])
+ * [34:3] = data[31:0]
+ * [35] = ICEPick BYPASS
+ * 
+ * ⚠️ 重要：APACC 写操作的 ACK 是流水线化的（pipelined）
+ * - 第一次 DR 扫描：发送写请求
+ * - 第二次 DR 扫描：返回的 ACK 是上一次操作的响应
+ * - 需要读取 DP.RDBUFF 来获取本次写操作的真实 ACK
+ */
+uint32 JTAG_APACC_Write(uint8 addr, uint32* data)
+{
+    uint32 i;
+    uint8 request = 0;
+    uint32 ack = 0;
+    uint32 tdo = 0;
+    uint32 write_data = (data != 0) ? (*data) : 0;
+
+    // 构造 APACC 写请求（35 位）
+    // [0] = 0 (写操作 RnW=0)
+    // [1] = addr[2] (A[2])
+    // [2] = addr[3] (A[3])
+    // [34:3] = data[31:0]
+    request = (addr & 0xC) >> 1;  // A[3:2] -> bit[2:1]
+    // RnW = 0 (写操作) 已经是 0
+
+    // 进入 DR 扫描（假设已经在 Pause-DR 或 Pause-IR 状态）
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 移位前 3 位（地址和 RnW）
+    for (i = 0; i < 3; i++) {
+        uint32 bit = (request >> i) & 0x01U;
+        JTAG_Shift_Bit(0, bit);
+    }
+
+    // 移位 32 位数据
+    for (i = 0; i < 32; i++) {
+        uint32 bit = (write_data >> i) & 0x01U;
+        JTAG_Shift_Bit(0, bit);
+    }
+
+    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
+    tdo = JTAG_Shift_Bit(1, 0);
+
+    // 到达 Exit1-DR，进入 Pause-DR
+    JTAG_Shift_Bit(0, 0);
+
+    // 切换到 DPACC 指令读取 RDBUFF 来获取真实 ACK
+    // （因为 APACC 写操作的 ACK 是延迟的，需要通过读取 DP.RDBUFF 获取）
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+    // 读取 DP.RDBUFF 来获取 APACC 写操作的真实 ACK
+    uint32 dummy_data = 0;
+    ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, &dummy_data);
+
+    return ack;
+}
+
+/**
+ * @brief 读 APACC 寄存器
+ * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ * 
+ * 注意：调用此函数前需要先设置 IR 为 APACC + ICEPick BYPASS
+ * APACC 读操作需要两次 DR 扫描：
+ * 1. 第一次发送读请求（36 位：3 位请求 + 32 位占位 + 1 位 bypass）
+ * 2. 第二次获取读取的数据（36 位：3 位 ACK + 32 位数据 + 1 位 bypass）
+ */
+uint32 JTAG_APACC_Read(uint8 addr, uint32* data)
+{
+    uint32 i;
+    uint8 request = 0;
+    uint32 ack = 0;
+    uint32 read_data = 0;
+    uint32 tdo = 0;
+
+    // 构造 APACC 读请求（35 位）+ ICEPick BYPASS（1 位）
+    // [0] = 1 (读操作 RnW=1)
+    // [1] = addr[2] (A[2])
+    // [2] = addr[3] (A[3])
+    // [34:3] = 数据占位（填充 0）
+    // [35] = ICEPick BYPASS（填充 0）
+    request = ((addr & 0xC) >> 1) | 1U;  // A[3:2] -> bit[2:1], RnW=1 -> bit[0]
+
+    // 进入 DR 扫描发送读请求（假设已经在 Pause-DR 或 Pause-IR 状态）
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 移位前 3 位（地址和 RnW）
+    for (i = 0; i < 3; i++) {
+        uint32 bit = (request >> i) & 0x01U;
+        JTAG_Shift_Bit(0, bit);
+    }
+
+    // 移位 32 位占位数据（填充 0）
+    for (i = 0; i < 32; i++) {
+        JTAG_Shift_Bit(0, 0);
+    }
+
+    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
+    JTAG_Shift_Bit(1, 0);
+
+    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
+
+    // 再次进入 DR 扫描获取数据
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 读取前 3 位获取 ACK
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack = tdo & 0x01U;
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack |= (tdo & 0x01U) << 1;
+    tdo = JTAG_Shift_Bit(0, 0);
+    ack |= (tdo & 0x01U) << 2;
+
+    // 读取 32 位数据
+    for (i = 0; i < 32; i++) {
+        tdo = JTAG_Shift_Bit(0, 0);
+        read_data |= (tdo & 0x01U) << i;
+    }
+
+    // 读取 1 位 ICEPick BYPASS，最后一位退出
+    JTAG_Shift_Bit(1, 0);
+
+    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
+
+    if (data != 0) {
+        *data = read_data;
+    }
+
+    return ack;
+}
+
+/**
  * @brief 初始化 DAP 调试电源
  * @return 1 表示成功，0 表示失败
  */

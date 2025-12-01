@@ -227,7 +227,7 @@ int main(void)
         JTAG_From_Pause_To_Select_DR_Scan();
         JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-        
+
         // 读取 CTRL/STAT 寄存器（函数内部会处理状态转换）
         uint32 ctrl_stat = 0;
         uint32 ack = JTAG_DPACC_Read(DP_ADDR_CTRL_STAT, &ctrl_stat);
@@ -246,6 +246,47 @@ int main(void)
         sci_Printf("      - 调试电源确认:%s\r\n", dbg_pwr_ack ? "是" : "否");
         sci_Printf("  [✓] DPACC 读取成功！\r\n\r\n");
 
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+        sci_Printf("  [7] 激活 APB-AP...\r\n");
+
+        // 步骤 1：向 JTAG-DP.SELECT 写 0x01000000
+        // 这会选择 APB-AP（AP #1）并选择它的 bank0
+        uint32 select_value = 0x01000000;
+        ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
+        sci_Printf("      - 写 DP.SELECT: 0x%08X (ACK=0x%X)\r\n", select_value,
+                   ack);
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
+                             "  [✗] 写 DP.SELECT 失败\r\n\r\n",
+                             "  [✓] APB-AP 已激活！\r\n\r\n");
+
+        sci_Printf("  [8] 设置 APB-AP 访问地址（指向 DTRRX）...\r\n");
+
+        // 步骤 2：向 APB-AP.TAR 写 0x80001080
+        // 这是 CPU 调试组件中 DTRRX 的地址
+        // ROM table 基地址 = 0x80000000
+        // ARM 内核调试组件 offset = 0x1000
+        // ARM core base = 0x80000000 + 0x1000 = 0x80001000
+        // DTRRX offset = 0x80
+        // 最终地址：0x80001080
+
+        // 切换到 APACC 指令（包含 ICEPick BYPASS）
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+        uint32 dtrrx_addr = 0x80001080;
+        // 注意：JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
+        // 这是因为 APACC 写操作的 ACK 是流水线化的（pipelined）
+        ack = JTAG_APACC_Write(AP_REG_TAR, &dtrrx_addr);
+        sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", dtrrx_addr,
+                   ack);
+
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
+                             "  [✗] 写 APB-AP.TAR 失败\r\n\r\n",
+                             "  [✓] APB-AP.TAR 已设置为 DTRRX 地址！\r\n\r\n");
     }
     /* USER CODE END */
 

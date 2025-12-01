@@ -130,6 +130,19 @@ Bit[3] = 1 Force Active Power and Clock
 #define DPACC_ACK_OK 0x2U    /* OK/FAULT */
 #define DPACC_ACK_WAIT 0x1U  /* WAIT */
 #define DPACC_ACK_FAULT 0x0U /* FAULT */
+
+/**
+ * @brief APB-AP 寄存器地址定义（相对于 AP bank）
+ */
+#define AP_REG_CSW 0x0U       /* Control/Status Word 寄存器 */
+#define AP_REG_TAR 0x4U       /* Transfer Address 寄存器 */
+#define AP_REG_DRW 0xCU       /* Data Read/Write 寄存器 */
+
+/**
+ * @brief APACC 请求类型定义
+ */
+#define APACC_READ (1U << 0)  /* 读操作 */
+#define APACC_WRITE (0U << 0) /* 写操作 */
 /* USER CODE END */
 
 /**
@@ -249,6 +262,22 @@ uint32 JTAG_DPACC_Write(uint8 addr, uint32 data);
  * @return ACK 响应值
  */
 uint32 JTAG_DPACC_Read(uint8 addr, uint32* data);
+
+/**
+ * @brief 写 APACC 寄存器
+ * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 指向要写入的 32 位数据指针
+ * @return ACK 响应值
+ */
+uint32 JTAG_APACC_Write(uint8 addr, uint32* data);
+
+/**
+ * @brief 读 APACC 寄存器
+ * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ */
+uint32 JTAG_APACC_Read(uint8 addr, uint32* data);
 
 /**
  * @brief 初始化 DAP 调试电源
