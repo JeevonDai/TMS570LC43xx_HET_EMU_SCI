@@ -253,8 +253,8 @@ int main(void)
 
         sci_Printf("  [7] 激活 APB-AP...\r\n");
 
-        // 步骤 1：向 JTAG-DP.SELECT 写 0x01000000
-        // 这会选择 APB-AP（AP #1）并选择它的 bank0
+        // 向 JTAG-DP.SELECT 写 0x01000000
+        // 选择 APB-AP 并选择它的 bank0
         uint32 select_value = 0x01000000;
         ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
         sci_Printf("      - 写 DP.SELECT: 0x%08X (ACK=0x%X)\r\n", select_value,
@@ -265,8 +265,8 @@ int main(void)
 
         sci_Printf("  [8] 设置 APB-AP 访问地址...\r\n");
 #if 0
-        // 步骤 2：向 APB-AP.TAR 写 0x80001080
-        // 这是 CPU 调试组件中 DTRRX 的地址
+        // 向 APB-AP.TAR 写 0x80001080
+        // CPU 调试组件中 DTRRX 的地址
         // ROM table 基地址 = 0x80000000
         // ARM 内核调试组件 offset = 0x1000
         // ARM core base = 0x80000000 + 0x1000 = 0x80001000
@@ -309,16 +309,62 @@ int main(void)
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
         uint32 halt_value = 0x1;
-        if(tmp++ % 2) {
+        if (tmp++ % 2) {
             halt_value = 0x2;
-        } else {
+        }
+        else {
             halt_value = 0x1;
         }
         ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
-        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
-            "  [✗] 写 DRCR 失败\r\n\r\n",
-            "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 DRCR 失败\r\n\r\n",
+                             "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
 
+        // 向 JTAG-DP.SELECT 写 0x00000000
+        // 选择 AHB-AP 并选择它的 bank0
+        sci_Printf(" [10] 激活 AHB-AP...\r\n");
+        select_value = 0x00000000;
+        ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
+        sci_Printf("      - 写 DP.SELECT: 0x%08X (ACK=0x%X)\r\n", select_value,
+                   ack);
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
+                             "  [✗] 写 DP.SELECT 失败\r\n\r\n",
+                             "  [✓] AHB-AP 已激活！\r\n\r\n");
+
+        sci_Printf(" [11] 进入 AHB-AP 访存模式...\r\n");
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        uint32 ahb_ap_csw = 0x43000012;
+        ack = JTAG_APACC_Write(AP_REG_CSW, &ahb_ap_csw);
+        sci_Printf("      - 写 AHB-AP.CSW: 0x%08X (ACK=0x%X)\r\n", ahb_ap_csw,
+                   ack);
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
+                             "  [✗] 写 AHB-AP.CSW 失败\r\n\r\n",
+                             "  [✓] AHB-AP.CSW 访存模式设置成功！\r\n\r\n");
+
+        sci_Printf(" [12] 设置 AHB-AP 访问地址...\r\n");
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+        uint32 sdram_addr = 0x08000000;
+        // 注意：JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
+        // 这是因为 APACC 写操作的 ACK 是流水线化（pipelined）的
+        ack = JTAG_APACC_Write(AP_REG_TAR, &sdram_addr);
+        sci_Printf("      - 写 AHB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", sdram_addr,
+                   ack);
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
+                             "  [✗] 写 AHB-AP.TAR 失败\r\n\r\n",
+                             "  [✓] AHB-AP.TAR 已设置为 AHB-AP 地址！\r\n\r\n");
+
+        sci_Printf(" [13] 通过 AHB-AP 写入 SDRAM 地址...\r\n");
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        uint32 sdram_data = 0x11111111;
+        ack = JTAG_APACC_Write(AP_REG_DRW, &sdram_data);
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 SDRAM 失败\r\n\r\n",
+                             "  [✓] SDRAM 已写入数据！\r\n\r\n");
     }
     /* USER CODE END */
 
