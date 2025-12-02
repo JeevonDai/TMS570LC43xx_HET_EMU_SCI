@@ -121,6 +121,7 @@ int main(void)
     // sci_Printf("  P1  (N2HET1_24) -> TDI  输出\r\n");
     // sci_Printf("  A9  (N2HET1_27) -> TDO  输入\r\n");
     // sci_Printf("  A3  (N2HET1_29) -> TMS  输出\r\n");
+    uint32 tmp = 0;
 
     while (1) {
         // 每隔一定次数执行一次 JTAG 测试
@@ -262,8 +263,8 @@ int main(void)
                              "  [✗] 写 DP.SELECT 失败\r\n\r\n",
                              "  [✓] APB-AP 已激活！\r\n\r\n");
 
-        sci_Printf("  [8] 设置 APB-AP 访问地址（指向 DTRRX）...\r\n");
-
+        sci_Printf("  [8] 设置 APB-AP 访问地址...\r\n");
+#if 0
         // 步骤 2：向 APB-AP.TAR 写 0x80001080
         // 这是 CPU 调试组件中 DTRRX 的地址
         // ROM table 基地址 = 0x80000000
@@ -287,6 +288,37 @@ int main(void)
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
                              "  [✗] 写 APB-AP.TAR 失败\r\n\r\n",
                              "  [✓] APB-AP.TAR 已设置为 DTRRX 地址！\r\n\r\n");
+#endif
+
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        uint32 drcr_addr = 0x80001090;
+        // 注意：JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
+        // 这是因为 APACC 写操作的 ACK 是流水线化的（pipelined）
+        ack = JTAG_APACC_Write(AP_REG_TAR, &drcr_addr);
+        sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", drcr_addr,
+                   ack);
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
+                             "  [✗] 写 APB-AP.TAR 失败\r\n\r\n",
+                             "  [✓] APB-AP.TAR 已设置为 DRCR 地址！\r\n\r\n");
+
+        sci_Printf("  [9] 等待 CPU 进入调试状态...\r\n");
+
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        uint32 halt_value = 0x1;
+        if(tmp++ % 2) {
+            halt_value = 0x2;
+        } else {
+            halt_value = 0x1;
+        }
+        ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
+        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
+            "  [✗] 写 DRCR 失败\r\n\r\n",
+            "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
+
     }
     /* USER CODE END */
 
