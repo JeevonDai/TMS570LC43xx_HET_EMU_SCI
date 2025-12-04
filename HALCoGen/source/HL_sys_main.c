@@ -333,16 +333,16 @@ int main(void)
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
         // 配置 AHB-AP CSW 寄存器
-        // CSW = 0x43000012
+        // CSW = 0x43000002
         // [31:24] = 0x43 - 保留位和 Debug SW Access
         // [23:12] = 0x000 - 保留
         // [11:8]  = 0x0 - Mode（基本传输模式）
         // [7]     = 0 - TrInProg（传输未进行）
         // [6]     = 0 - DeviceEn（设备特定）
-        // [5:4]   = 01b - AddrInc（单次递增，每次访问后地址加 4）
+        // [5:4]   = 00b - AddrInc OFF（地址不自增，手动控制 TAR）
         // [3]     = 0 - 保留
         // [2:0]   = 010b - Size（32-bit 访问）
-        uint32 ahb_ap_csw = 0x43000012;
+        uint32 ahb_ap_csw = 0x43000002;
         ack = JTAG_APACC_Write(AP_REG_CSW, &ahb_ap_csw);
         sci_Printf("      - 写 AHB-AP.CSW: 0x%08X (ACK=0x%X)\r\n", ahb_ap_csw,
                    ack);
@@ -376,17 +376,33 @@ int main(void)
 
         /* 
          * 循环写入每个 32 位字
-         * 注意: TAR 已在步骤 [12] 设置为 0x08000000
-         * CSW 配置了自动递增，每次写入 DRW 后地址自动 +4
+         * 注意: CSW 已关闭自动递增，需要每次手动设置 TAR
          */
         for (i = 0; i < SRAM_BIN_WORDS; i++) {
             /* 读取 FLASH 中的数据 */
             uint32 flash_data = flash_ptr[i];
+            uint32 target_addr = TARGET_SRAM_BASE + i * 4;
+            
             if(i % 0x400 == 0) {
                 sci_Printf("      - FLASH 数据: 0x%08X\r\n", flash_ptr[i]);
             }
 
-            /* 写入数据到 DRW（由于 CSW 配置了自动递增，地址会自动 +4）*/
+            /* 先设置 TAR 地址 */
+            JTAG_From_Pause_To_Select_DR_Scan();
+            JTAG_Write_IR_Pause(
+                DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+            ack = JTAG_APACC_Write(AP_REG_TAR, &target_addr);
+            if (ack != DPACC_ACK_OK) {
+                write_errors++;
+                if (write_errors <= 5) {
+                    sci_Printf("  [✗] 设置TAR失败 @0x%08X (ACK=0x%X)\r\n",
+                               target_addr, ack);
+                }
+                continue;
+            }
+
+            /* 再写入数据到 DRW */
             JTAG_From_Pause_To_Select_DR_Scan();
             JTAG_Write_IR_Pause(
                 DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
