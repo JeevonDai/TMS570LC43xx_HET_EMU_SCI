@@ -67,7 +67,7 @@
 /* USER CODE BEGIN (2) */
 #define SCI_REG sciREG1  // 定义 sci 端口寄存器
 
-#define CNT 5000000
+#define CNT 50000000
 
 #define SRAM_BIN_SIZE 35152U            /* bin 文件大小（字节）*/
 #define TARGET_SRAM_BASE 0x08000000U    /* 目标芯片 SRAM 起始地址 */
@@ -97,7 +97,7 @@ int main(void)
             /* 读取 SRAM 中的数据 */
             uint32 sram_data = sram_ptr[i];
             if(i % 0x400 == 0) {
-                sci_Printf("      - SRAM 数据: 0x%08X\r\n", sram_ptr[i]);
+                sci_Printf("SRAM 地址 0x%8x 的数据: 0x%08X\r\n", sram_ptr + i,sram_ptr[i]);
             }
         }
         for (i = 0; i < CNT; i++)
