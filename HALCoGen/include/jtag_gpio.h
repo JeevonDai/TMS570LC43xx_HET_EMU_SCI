@@ -139,6 +139,51 @@ Bit[3] = 1 Force Active Power and Clock
 #define AP_REG_DRW 0xCU       /* Data Read/Write 寄存器 */
 
 /**
+ * @brief ARM Cortex-R 调试寄存器地址定义
+ * ROM Table 基地址 = 0x80000000
+ * ARM 调试组件偏移 = 0x1000
+ * ARM Core Debug 基地址 = 0x80001000
+ */
+#define DBG_BASE_ADDR       0x80001000U  /* ARM 调试组件基地址 */
+#define DBG_DTRRX_ADDR      0x80001080U  /* 调试数据传输接收寄存器（外部写入）*/
+#define DBG_ITR_ADDR        0x80001084U  /* 指令传输寄存器 */
+#define DBG_DSCR_ADDR       0x80001088U  /* 调试状态和控制寄存器 */
+#define DBG_DTRTX_ADDR      0x8000108CU  /* 调试数据传输发送寄存器（外部读取）*/
+#define DBG_DRCR_ADDR       0x80001090U  /* 调试运行控制寄存器 */
+
+/**
+ * @brief DSCR (Debug Status and Control Register) 位定义
+ */
+#define DSCR_HALTED         (1U << 0)    /* CPU 已停止 */
+#define DSCR_RESTARTED      (1U << 1)    /* CPU 已重启 */
+#define DSCR_SDABORT_L      (1U << 6)    /* 同步数据中止（粘滞）*/
+#define DSCR_ITR_EN         (1U << 13)   /* ITR 使能（允许执行指令）*/
+#define DSCR_HALT_DBG_MODE  (1U << 14)   /* Halt 调试模式使能 */
+#define DSCR_INSTRCOML_L    (1U << 24)   /* 指令执行完成（粘滞）*/
+#define DSCR_DTR_TX_FULL    (1U << 29)   /* DTRTX 满 */
+#define DSCR_DTR_RX_FULL    (1U << 30)   /* DTRRX 满 */
+
+/**
+ * @brief DRCR (Debug Run Control Register) 位定义
+ */
+#define DRCR_HALT           (1U << 0)    /* 请求 CPU 停止 */
+#define DRCR_RESTART        (1U << 1)    /* 请求 CPU 重启 */
+#define DRCR_CLR_EXCEPTIONS (1U << 2)    /* 清除粘滞异常 */
+
+/**
+ * @brief ARM 指令编码（用于 ITR 执行）
+ * MRC/MCR p14, 0, Rd, c0, c5, 0 - 读写 DTRRX/DTRTX
+ */
+/* MRC p14, 0, R0, c0, c5, 0 - 从 DTRRX 读取到 R0 */
+#define ARM_INSTR_MRC_DTRRX_R0  0xEE100E15U
+/* MCR p14, 0, R0, c0, c5, 0 - 从 R0 写入到 DTRTX */
+#define ARM_INSTR_MCR_R0_DTRTX  0xEE000E15U
+/* MOV PC, R0 - 将 R0 值加载到 PC */
+#define ARM_INSTR_MOV_PC_R0     0xE1A0F000U
+/* BX R0 - 跳转到 R0 指向的地址 */
+#define ARM_INSTR_BX_R0         0xE12FFF10U
+
+/**
  * @brief APACC 请求类型定义
  */
 #define APACC_READ (1U << 0)  /* 读操作 */
@@ -296,6 +341,37 @@ uint32 JTAG_DAP_Halt_CPU(void);
  * @return 1 表示成功，0 表示失败
  */
 uint32 JTAG_DAP_Resume_CPU(void);
+
+/**
+ * @brief 通过 APB-AP 读取调试寄存器
+ * @param addr 目标地址（如 DBG_DSCR_ADDR）
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ */
+uint32 JTAG_APB_AP_Read(uint32 addr, uint32* data);
+
+/**
+ * @brief 通过 APB-AP 写入调试寄存器
+ * @param addr 目标地址（如 DBG_DSCR_ADDR）
+ * @param data 要写入的数据
+ * @return ACK 响应值
+ */
+uint32 JTAG_APB_AP_Write(uint32 addr, uint32 data);
+
+/**
+ * @brief 通过 AHB-AP 读取内存
+ * @param addr 目标地址
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ */
+uint32 JTAG_AHB_AP_Read(uint32 addr, uint32* data);
+
+/**
+ * @brief 设置 CPU PC 指针并启动执行
+ * @param entry_addr 程序入口地址
+ * @return 0 表示成功，1 表示失败
+ */
+uint32 JTAG_Set_PC_And_Run(uint32 entry_addr);
 
 /* USER CODE END */
 

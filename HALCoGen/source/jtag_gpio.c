@@ -755,4 +755,278 @@ uint32 JTAG_DAP_Resume_CPU(void)
     return 0;
 }
 
+/**
+ * @brief 通过 APB-AP 读取调试寄存器
+ * @param addr 目标地址（如 DBG_DSCR_ADDR）
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ * 
+ * 步骤：
+ * 1. 选择 APB-AP（SELECT = 0x01000000）
+ * 2. 配置 CSW（32-bit 访问，DbgSwEnable=1）
+ * 3. 设置 TAR 为目标地址
+ * 4. 从 DRW 读取数据
+ */
+uint32 JTAG_APB_AP_Read(uint32 addr, uint32* data)
+{
+    uint32 ack = 0;
+    uint32 tar_addr = addr;
+
+    /* 1. 选择 APB-AP (APSEL = 1) */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    uint32 select_value = 0x01000000U;  /* APB-AP */
+    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 2. 切换到 APACC，配置 CSW（32-bit 访问，无自动递增）*/
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    uint32 csw_value = 0x80000002U;  /* APB-AP: DbgSwEnable=1, Size=32-bit */
+    ack = JTAG_APACC_Write(AP_REG_CSW, &csw_value);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 3. 设置 TAR */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 4. 从 DRW 读取数据 */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Read(AP_REG_DRW, data);
+
+    return ack;
+}
+
+/**
+ * @brief 通过 APB-AP 写入调试寄存器
+ * @param addr 目标地址（如 DBG_DSCR_ADDR）
+ * @param data 要写入的数据
+ * @return ACK 响应值
+ * 
+ * 步骤：
+ * 1. 选择 APB-AP（SELECT = 0x01000000）
+ * 2. 配置 CSW（32-bit 访问，DbgSwEnable=1）
+ * 3. 设置 TAR 为目标地址
+ * 4. 向 DRW 写入数据
+ */
+uint32 JTAG_APB_AP_Write(uint32 addr, uint32 data)
+{
+    uint32 ack = 0;
+    uint32 tar_addr = addr;
+    uint32 write_data = data;
+
+    /* 1. 选择 APB-AP (APSEL = 1) */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    uint32 select_value = 0x01000000U;  /* APB-AP */
+    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 2. 切换到 APACC，配置 CSW（32-bit 访问，无自动递增）*/
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    uint32 csw_value = 0x80000002U;  /* APB-AP: DbgSwEnable=1, Size=32-bit */
+    ack = JTAG_APACC_Write(AP_REG_CSW, &csw_value);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 3. 设置 TAR */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 4. 向 DRW 写入数据 */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Write(AP_REG_DRW, &write_data);
+
+    return ack;
+}
+
+/**
+ * @brief 通过 AHB-AP 读取内存
+ * @param addr 目标地址
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ */
+uint32 JTAG_AHB_AP_Read(uint32 addr, uint32* data)
+{
+    uint32 ack = 0;
+    uint32 tar_addr = addr;
+
+    /* 1. 选择 AHB-AP (APSEL = 0) */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    uint32 select_value = 0x00000000U;  /* AHB-AP */
+    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 2. 切换到 APACC，配置 CSW（32-bit 访问，无自动递增）*/
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    uint32 csw_value = 0x43000002U;  /* 32-bit, 无递增 */
+    ack = JTAG_APACC_Write(AP_REG_CSW, &csw_value);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 3. 设置 TAR */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 4. 从 DRW 读取数据 */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Read(AP_REG_DRW, data);
+
+    return ack;
+}
+
+/**
+ * @brief 设置 CPU PC 指针并启动执行
+ * @param entry_addr 程序入口地址
+ * @return 0 表示成功，1 表示失败
+ * 
+ * 实现步骤：
+ * 1. 读取 DSCR 确认 CPU 处于 Halted 状态
+ * 2. 使能 ITR 执行（设置 DSCR.ITRen）
+ * 3. 将入口地址写入 DTRRX
+ * 4. 通过 ITR 执行 MRC 指令将 DTRRX 读入 R0
+ * 5. 等待指令执行完成
+ * 6. 通过 ITR 执行 BX R0 跳转到入口地址
+ * 7. 发送 RESTART 请求，恢复 CPU 执行
+ */
+uint32 JTAG_Set_PC_And_Run(uint32 entry_addr)
+{
+    uint32 ack = 0;
+    uint32 dscr_value = 0;
+    uint32 timeout = 1000;
+    uint32 i;
+
+    /* 1. 读取 DSCR 确认 CPU 已停止 */
+    ack = JTAG_APB_AP_Read(DBG_DSCR_ADDR, &dscr_value);
+    if (ack != DPACC_ACK_OK) {
+        return 1;  /* 读取 DSCR 失败 */
+    }
+    
+    if ((dscr_value & DSCR_HALTED) == 0) {
+        return 2;  /* CPU 未处于 Halted 状态 */
+    }
+
+    /* 2. 使能 ITR 执行（设置 DSCR.ITRen = 1）*/
+    dscr_value |= DSCR_ITR_EN;
+    ack = JTAG_APB_AP_Write(DBG_DSCR_ADDR, dscr_value);
+    if (ack != DPACC_ACK_OK) {
+        return 3;  /* 使能 ITR 失败 */
+    }
+
+    /* 3. 将入口地址写入 DTRRX */
+    ack = JTAG_APB_AP_Write(DBG_DTRRX_ADDR, entry_addr);
+    if (ack != DPACC_ACK_OK) {
+        return 4;  /* 写入 DTRRX 失败 */
+    }
+
+    /* 4. 通过 ITR 执行: MRC p14, 0, R0, c0, c5, 0 
+     *    将 DTRRX 的值读入 R0 */
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, ARM_INSTR_MRC_DTRRX_R0);
+    if (ack != DPACC_ACK_OK) {
+        return 5;  /* 写入 ITR 失败 */
+    }
+
+    /* 5. 等待指令执行完成（轮询 DSCR.InstrCompl_l）*/
+    for (i = 0; i < timeout; i++) {
+        ack = JTAG_APB_AP_Read(DBG_DSCR_ADDR, &dscr_value);
+        if (ack == DPACC_ACK_OK && (dscr_value & DSCR_INSTRCOML_L)) {
+            break;  /* 指令执行完成 */
+        }
+        /* 简单延时 */
+        volatile uint32 delay;
+        for (delay = 0; delay < 100; delay++);
+    }
+    
+    if (i >= timeout) {
+        return 6;  /* 等待指令完成超时 */
+    }
+
+    /* 6. 通过 ITR 执行: BX R0 
+     *    跳转到 R0 指向的地址（即 entry_addr）*/
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, ARM_INSTR_BX_R0);
+    if (ack != DPACC_ACK_OK) {
+        return 7;  /* 写入 ITR (BX R0) 失败 */
+    }
+
+    /* 等待指令执行完成 */
+    for (i = 0; i < timeout; i++) {
+        ack = JTAG_APB_AP_Read(DBG_DSCR_ADDR, &dscr_value);
+        if (ack == DPACC_ACK_OK && (dscr_value & DSCR_INSTRCOML_L)) {
+            break;
+        }
+        volatile uint32 delay;
+        for (delay = 0; delay < 100; delay++);
+    }
+
+    /* 7. 发送 RESTART 请求，恢复 CPU 执行 */
+    ack = JTAG_APB_AP_Write(DBG_DRCR_ADDR, DRCR_RESTART);
+    if (ack != DPACC_ACK_OK) {
+        return 8;  /* 发送 RESTART 失败 */
+    }
+
+    /* 等待 CPU 重启（轮询 DSCR.RESTARTED）*/
+    for (i = 0; i < timeout; i++) {
+        ack = JTAG_APB_AP_Read(DBG_DSCR_ADDR, &dscr_value);
+        if (ack == DPACC_ACK_OK && (dscr_value & DSCR_RESTARTED)) {
+            break;  /* CPU 已重启 */
+        }
+        volatile uint32 delay;
+        for (delay = 0; delay < 100; delay++);
+    }
+
+    return 0;  /* 成功 */
+}
+
 /* USER CODE END */

@@ -75,6 +75,12 @@ uint32 parse_IDCODE(uint32 idcode, const char* name);
 #define SUCCESS 0
 #define FAILED 1
 
+/* SRAM 加载器相关定义 */
+#define SRAM_BIN_FLASH_ADDR 0x00200000U /* bin 文件在 FLASH BANK1 的起始地址 */
+#define SRAM_BIN_SIZE 35152U            /* bin 文件大小（字节）*/
+#define TARGET_SRAM_BASE 0x08000000U    /* 目标芯片 SRAM 起始地址 */
+#define SRAM_BIN_WORDS ((SRAM_BIN_SIZE + 3) / 4) /* 按 32 位字计算 */
+
 #define CONTINUE_IF(condition)                                                 \
     if (condition) continue;
 
@@ -172,7 +178,7 @@ int main(void)
 
         // 读取 DCON 寄存器验证
         uint8 dcon = JTAG_ICEPick_Read_DCON();
-        sci_Printf("      - DCON 寄存器值：0x%02X\r\n", dcon);
+        sci_Printf("      - DCON 寄存器值: 0x%02X\r\n", dcon);
 
         // 检查连接状态
         CONTINUE_IF_MSG_FULL(
@@ -208,7 +214,7 @@ int main(void)
         JTAG_From_Idle_To_Select_DR_Scan();
 
         // 读取 DR（默认 IDCODE 指令）并提取实际的 IDCODE（前 32 位）
-        // 注意：是 32+1=33 位（32 位 IDCODE + 1 位 ICEPick BYPASS）
+        // 注意: 是 32+1=33 位（32 位 IDCODE + 1 位 ICEPick BYPASS）
         uint32 dap_idcode =
             JTAG_Read_DR_Pause(ICEPICK_IDCODE_LENGTH + 1) & 0xFFFFFFFF;
 
@@ -271,7 +277,7 @@ int main(void)
         // ARM 内核调试组件 offset = 0x1000
         // ARM core base = 0x80000000 + 0x1000 = 0x80001000
         // DTRRX offset = 0x80
-        // 最终地址：0x80001080
+        // 最终地址: 0x80001080
 
         // 切换到 APACC 指令（包含 ICEPick BYPASS）
         JTAG_From_Pause_To_Select_DR_Scan();
@@ -279,7 +285,7 @@ int main(void)
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 dtrrx_addr = 0x80001080;
-        // 注意：JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
+        // 注意: JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
         // 这是因为 APACC 写操作的 ACK 是流水线化的（pipelined）
         ack = JTAG_APACC_Write(AP_REG_TAR, &dtrrx_addr);
         sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", dtrrx_addr,
@@ -294,7 +300,7 @@ int main(void)
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
         uint32 drcr_addr = 0x80001090;
-        // 注意：JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
+        // 注意: JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
         // 这是因为 APACC 写操作的 ACK 是流水线化的（pipelined）
         ack = JTAG_APACC_Write(AP_REG_TAR, &drcr_addr);
         sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", drcr_addr,
@@ -309,12 +315,6 @@ int main(void)
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
         uint32 halt_value = 0x1;
-        if (tmp++ % 2) {
-            halt_value = 0x2;
-        }
-        else {
-            halt_value = 0x1;
-        }
         ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 DRCR 失败\r\n\r\n",
                              "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
@@ -334,6 +334,16 @@ int main(void)
         JTAG_From_Pause_To_Select_DR_Scan();
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        // 配置 AHB-AP CSW 寄存器
+        // CSW = 0x43000012
+        // [31:24] = 0x43 - 保留位和 Debug SW Access
+        // [23:12] = 0x000 - 保留
+        // [11:8]  = 0x0 - Mode（基本传输模式）
+        // [7]     = 0 - TrInProg（传输未进行）
+        // [6]     = 0 - DeviceEn（设备特定）
+        // [5:4]   = 01b - AddrInc（单次递增，每次访问后地址加 4）
+        // [3]     = 0 - 保留
+        // [2:0]   = 010b - Size（32-bit 访问）
         uint32 ahb_ap_csw = 0x43000012;
         ack = JTAG_APACC_Write(AP_REG_CSW, &ahb_ap_csw);
         sci_Printf("      - 写 AHB-AP.CSW: 0x%08X (ACK=0x%X)\r\n", ahb_ap_csw,
@@ -348,7 +358,7 @@ int main(void)
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 sdram_addr = 0x08000000;
-        // 注意：JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
+        // 注意: JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
         // 这是因为 APACC 写操作的 ACK 是流水线化（pipelined）的
         ack = JTAG_APACC_Write(AP_REG_TAR, &sdram_addr);
         sci_Printf("      - 写 AHB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", sdram_addr,
@@ -357,14 +367,92 @@ int main(void)
                              "  [✗] 写 AHB-AP.TAR 失败\r\n\r\n",
                              "  [✓] AHB-AP.TAR 已设置为 AHB-AP 地址！\r\n\r\n");
 
-        sci_Printf(" [13] 通过 AHB-AP 写入 SDRAM 地址...\r\n");
-        JTAG_From_Pause_To_Select_DR_Scan();
-        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-        uint32 sdram_data = 0x11111111;
-        ack = JTAG_APACC_Write(AP_REG_DRW, &sdram_data);
-        CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 SDRAM 失败\r\n\r\n",
-                             "  [✓] SDRAM 已写入数据！\r\n\r\n");
+        sci_Printf(" [13] 从 FLASH 读取 bin 并写入备芯片 SRAM...\r\n");
+        sci_Printf("      - FLASH 源地址: 0x%08X\r\n", SRAM_BIN_FLASH_ADDR);
+        sci_Printf("      - SRAM 目标地址: 0x%08X\r\n", TARGET_SRAM_BASE);
+        sci_Printf("      - bin 大小: %d 字节 (%d 字)\r\n", SRAM_BIN_SIZE,
+                   SRAM_BIN_WORDS);
+
+        /* 获取 FLASH 中 bin 数据的指针 */
+        uint32* flash_ptr = (uint32*)SRAM_BIN_FLASH_ADDR;
+        uint32 words_written = 0;
+        uint32 write_errors = 0;
+
+        /* 
+         * 循环写入每个 32 位字
+         * 注意: TAR 已在步骤 [12] 设置为 0x08000000
+         * CSW 配置了自动递增，每次写入 DRW 后地址自动 +4
+         */
+        for (i = 0; i < SRAM_BIN_WORDS; i++) {
+            /* 读取 FLASH 中的数据 */
+            uint32 flash_data = flash_ptr[i];
+
+            /* 写入数据到 DRW（由于 CSW 配置了自动递增，地址会自动 +4）*/
+            JTAG_From_Pause_To_Select_DR_Scan();
+            JTAG_Write_IR_Pause(
+                DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+            ack = JTAG_APACC_Write(AP_REG_DRW, &flash_data);
+
+            if (ack != DPACC_ACK_OK) {
+                write_errors++;
+                if (write_errors <= 5) {
+                    sci_Printf("  [✗] 写入失败 @0x%08X (ACK=0x%X)\r\n",
+                               TARGET_SRAM_BASE + i * 4, ack);
+                }
+            }
+            else {
+                words_written++;
+            }
+
+            /* 每写入 1024 字（4KB）输出一次进度 */
+            if ((i + 1) % 1024 == 0) {
+                sci_Printf("      进度: %d/%d 字 (%d%%)\r\n", i + 1,
+                           SRAM_BIN_WORDS, (i + 1) * 100 / SRAM_BIN_WORDS);
+            }
+        }
+
+        sci_Printf("      - 写入完成: %d/%d 字, 错误: %d\r\n", words_written,
+                   SRAM_BIN_WORDS, write_errors);
+
+        CONTINUE_IF_MSG_FULL(
+            write_errors > 0 || words_written != SRAM_BIN_WORDS,
+            "  [✗] SRAM 写入失败\r\n\r\n", "  [✓] SRAM 写入成功！\r\n\r\n");
+
+        sci_Printf(" [14] 读取复位向量（程序入口地址）...\r\n");
+        /* 
+         * SRAM 中 bin 文件布局（ARM 向量表）：
+         * 0x08000000: 复位向量（Reset Handler 地址）
+         * 0x08000004: 未定义指令向量
+         * ...
+         * 实际上，Cortex-R 的向量表第一个字是 Reset Handler 的跳转指令
+         * 但对于 TMS570，通常第一条是 LDR PC, [PC, #24] 等指令
+         * 我们直接跳转到 0x08000000 让它从向量表开始执行
+         */
+        uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
+        sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
+
+        sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
+        uint32 result = JTAG_Set_PC_And_Run(entry_addr);
+        
+        if (result == 0) {
+            sci_Printf("  [✓] CPU 已跳转到 SRAM 并开始执行！\r\n");
+            sci_Printf("====================================\r\n");
+            sci_Printf("  SRAM 加载完成，程序正在运行...\r\n");
+            sci_Printf("====================================\r\n\r\n");
+        }
+        else {
+            sci_Printf("  [✗] 启动失败，错误码: %d\r\n", result);
+            sci_Printf("      错误含义:\r\n");
+            sci_Printf("        1 = 读取 DSCR 失败\r\n");
+            sci_Printf("        2 = CPU 未处于 Halted 状态\r\n");
+            sci_Printf("        3 = 使能 ITR 失败\r\n");
+            sci_Printf("        4 = 写入 DTRRX 失败\r\n");
+            sci_Printf("        5 = 写入 ITR (MRC) 失败\r\n");
+            sci_Printf("        6 = 等待指令完成超时\r\n");
+            sci_Printf("        7 = 写入 ITR (BX) 失败\r\n");
+            sci_Printf("        8 = 发送 RESTART 失败\r\n");
+        }
     }
     /* USER CODE END */
 
@@ -409,10 +497,10 @@ uint32 parse_IDCODE(uint32 idcode, const char* name)
         uint32 part = (idcode >> 12) & 0xFFFF;
         uint32 mfg = (idcode >> 1) & 0x7FF;
 
-        sci_Printf("      - 版本号：0x%X\r\n", version);
-        sci_Printf("      - 器件型号：0x%04X\r\n", part);
+        sci_Printf("      - 版本号: 0x%X\r\n", version);
+        sci_Printf("      - 器件型号: 0x%04X\r\n", part);
         sci_Printf("      - 制造商 ID: 0x%03X\r\n", mfg);
-        sci_Printf("      - 制造商：%s\r\n", get_manufacturer_name(mfg));
+        sci_Printf("      - 制造商: %s\r\n", get_manufacturer_name(mfg));
         sci_Printf("  [✓] %s IDCODE 读取成功！\r\n\r\n", name);
         return SUCCESS;
     }
