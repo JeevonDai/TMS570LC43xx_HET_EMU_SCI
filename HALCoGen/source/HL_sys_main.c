@@ -69,6 +69,10 @@
 
 #define CNT 5000000
 
+#define SRAM_BIN_SIZE 35152U            /* bin 文件大小（字节）*/
+#define TARGET_SRAM_BASE 0x08000000U    /* 目标芯片 SRAM 起始地址 */
+#define SRAM_BIN_WORDS ((SRAM_BIN_SIZE + 3) / 4) /* 按 32 位字计算 */
+
 void sci_Printf(char* format, ...);
 /* USER CODE END */
 
@@ -79,9 +83,23 @@ int main(void)
     int count = 0;
 
     sciInit();
+    uint32* sram_ptr = (uint32*)0x08000000U;
+
+    /* 
+        * 循环写入每个 32 位字
+        * 注意: TAR 已在步骤 [12] 设置为 0x08000000
+        * CSW 配置了自动递增，每次写入 DRW 后地址自动 +4
+        */
     while (1) {
         count++;                                            // 计数
         sci_Printf("Hello world, count = %d.\r\n", count);  // 使用自定义 printf 函数输出
+        for (i = 0; i < SRAM_BIN_WORDS; i++) {
+            /* 读取 SRAM 中的数据 */
+            uint32 sram_data = sram_ptr[i];
+            if(i % 0x400 == 0) {
+                sci_Printf("      - SRAM 数据: 0x%08X\r\n", sram_ptr[i]);
+            }
+        }
         for (i = 0; i < CNT; i++)
             ;  // 粗略延时
     }
