@@ -285,8 +285,6 @@ int main(void)
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 dtrrx_addr = 0x80001080;
-        // 注意: JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
-        // 这是因为 APACC 写操作的 ACK 是流水线化的（pipelined）
         ack = JTAG_APACC_Write(AP_REG_TAR, &dtrrx_addr);
         sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", dtrrx_addr,
                    ack);
@@ -358,8 +356,6 @@ int main(void)
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 sdram_addr = 0x08000000;
-        // 注意: JTAG_APACC_Write 会自动读取 DP.RDBUFF 来获取真实的 ACK
-        // 这是因为 APACC 写操作的 ACK 是流水线化（pipelined）的
         ack = JTAG_APACC_Write(AP_REG_TAR, &sdram_addr);
         sci_Printf("      - 写 AHB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", sdram_addr,
                    ack);
@@ -386,6 +382,9 @@ int main(void)
         for (i = 0; i < SRAM_BIN_WORDS; i++) {
             /* 读取 FLASH 中的数据 */
             uint32 flash_data = flash_ptr[i];
+            if(i % 0x400 == 0) {
+                sci_Printf("      - FLASH 数据: 0x%08X\r\n", flash_ptr[i]);
+            }
 
             /* 写入数据到 DRW（由于 CSW 配置了自动递增，地址会自动 +4）*/
             JTAG_From_Pause_To_Select_DR_Scan();
@@ -444,14 +443,11 @@ int main(void)
         else {
             sci_Printf("  [✗] 启动失败，错误码: %d\r\n", result);
             sci_Printf("      错误含义:\r\n");
-            sci_Printf("        1 = 读取 DSCR 失败\r\n");
-            sci_Printf("        2 = CPU 未处于 Halted 状态\r\n");
-            sci_Printf("        3 = 使能 ITR 失败\r\n");
-            sci_Printf("        4 = 写入 DTRRX 失败\r\n");
-            sci_Printf("        5 = 写入 ITR (MRC) 失败\r\n");
-            sci_Printf("        6 = 等待指令完成超时\r\n");
-            sci_Printf("        7 = 写入 ITR (BX) 失败\r\n");
-            sci_Printf("        8 = 发送 RESTART 失败\r\n");
+            sci_Printf("        1 = 再次激活 APB-AP 失败\r\n");
+            sci_Printf("        2 = 写入 DTRRX 失败\r\n");
+            sci_Printf("        3 = 写入 ITR (MRC) 失败\r\n");
+            sci_Printf("        4 = 写入 ITR (BX) 失败\r\n");
+            sci_Printf("        5 = 发送 RESTART 失败\r\n");
         }
     }
     /* USER CODE END */
