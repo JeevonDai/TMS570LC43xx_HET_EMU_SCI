@@ -77,7 +77,7 @@ uint32 parse_IDCODE(uint32 idcode, const char* name);
 
 /* SRAM 加载器相关定义 */
 #define SRAM_BIN_FLASH_ADDR 0x00200000U /* bin 文件在 FLASH BANK1 的起始地址 */
-#define SRAM_BIN_SIZE 35152U            /* bin 文件大小（字节）*/
+#define SRAM_BIN_SIZE 38000U            /* bin 文件大小（字节）*/
 #define TARGET_SRAM_BASE 0x08000000U    /* 目标芯片 SRAM 起始地址 */
 #define SRAM_BIN_WORDS ((SRAM_BIN_SIZE + 3) / 4) /* 按 32 位字计算 */
 
@@ -444,7 +444,10 @@ int main(void)
          * 但对于 TMS570，通常第一条是 LDR PC, [PC, #24] 等指令
          * 我们直接跳转到 0x08000000 让它从向量表开始执行
          */
-        uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
+        // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
+        // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
+        // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
