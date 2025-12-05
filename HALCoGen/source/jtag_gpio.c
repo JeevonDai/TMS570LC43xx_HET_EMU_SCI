@@ -847,6 +847,7 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     if (ack != DPACC_ACK_OK) {
         return 1;
     }
+    JTAG_From_Pause_To_Select_DR_Scan();
 
     uint32 instruction = ARM_INSTR_MOV_R0_PC;
     /* 2. 通过 ITR 执行: MOV R0, PC */

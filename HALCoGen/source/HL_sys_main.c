@@ -459,7 +459,7 @@ int main(void)
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
 
-#if 0
+#if 1
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
         
         if (result == 0) {
