@@ -315,15 +315,15 @@ int main(void)
         ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 DRCR 失败\r\n\r\n",
                              "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
-        if(halt_value == 0x2) {
+        tmp++;
+        if(tmp % 2) {
+            halt_value = 0x2;
+        } else {
             halt_value = 0x1;
             JTAG_From_Pause_To_Select_DR_Scan();
             sci_Printf("HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
             continue;
-        } else {
-            halt_value = 0x2;
         }
-
         // 向 JTAG-DP.SELECT 写 0x00000000
         // 选择 AHB-AP 并选择它的 bank0
         sci_Printf(" [10] 激活 AHB-AP...\r\n");
@@ -459,7 +459,7 @@ int main(void)
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
 
-#if 1
+#if 0
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
         
         if (result == 0) {

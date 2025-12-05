@@ -786,6 +786,51 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
 }
 
 /**
+ * @brief 通过 APB-AP 读取指定地址的数据
+ * @param tar_addr 目标地址（调试寄存器地址）
+ * @param read_data 输出参数，存储读取到的数据
+ * @return ACK 响应值
+ * 
+ * 注意：APACC 读操作是流水线化的，需要两次读取：
+ * 1. 第一次读 DRW 发送读请求
+ * 2. 第二次通过 RDBUFF 获取真实数据
+ */
+uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
+{
+    uint32 ack = 0;
+    uint32 dummy_data = 0;
+
+    /* 1. 切换到 APACC，设置 TAR（目标地址） */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 2. 从 DRW 发起读请求（第一次读，启动流水线） */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    
+    ack = JTAG_APACC_Read(AP_REG_DRW, &dummy_data);
+    if (ack != DPACC_ACK_OK) {
+        return ack;
+    }
+
+    /* 3. 切换到 DPACC，读取 RDBUFF 获取真实数据 */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+    ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, read_data);
+
+    return ack;
+}
+
+/**
  * @brief 读取 CPU 当前 PC 指针（CPU 必须处于 HALT 状态）
  * @param pc_value 输出参数，存储读取到的 PC 值
  * @return 0 表示成功，非0 表示失败
@@ -803,7 +848,7 @@ uint32 JTAG_Read_PC(uint32* pc_value)
         return 1;
     }
 
-    uint32 instruction = ARM_INSTR_MOV_PC_R0;
+    uint32 instruction = ARM_INSTR_MOV_R0_PC;
     /* 2. 通过 ITR 执行: MOV R0, PC */
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);  /* MOV R0, PC */
     if (ack != DPACC_ACK_OK) {
@@ -822,7 +867,7 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     for (delay = 0; delay < 10000; delay++);
 
     /* 4. 读取 DTRTX 获取 PC 值 */
-    ack = JTAG_APB_AP_Write(DBG_DTRTX_ADDR, &pc_value);
+    ack = JTAG_APB_AP_Read(DBG_DTRTX_ADDR, pc_value);
     if (ack != DPACC_ACK_OK) {
         return 4;
     }
