@@ -447,10 +447,11 @@ int main(void)
         // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
         // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
         // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
-        uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        uint32 entry_addr = 0x00005fbc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
+#if 0
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
         
         if (result == 0) {
@@ -468,6 +469,7 @@ int main(void)
             sci_Printf("        4 = 写入 ITR (BX) 失败\r\n");
             sci_Printf("        5 = 发送 RESTART 失败\r\n");
         }
+#endif
     }
     /* USER CODE END */
 
