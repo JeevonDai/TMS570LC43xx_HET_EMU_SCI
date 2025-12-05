@@ -128,6 +128,7 @@ int main(void)
     // sci_Printf("  A9  (N2HET1_27) -> TDO  输入\r\n");
     // sci_Printf("  A3  (N2HET1_29) -> TMS  输出\r\n");
     uint32 tmp = 0;
+    uint32 halt_value = 0x1;
 
     while (1) {
         // 每隔一定次数执行一次 JTAG 测试
@@ -270,7 +271,6 @@ int main(void)
                              "  [✓] APB-AP 已激活！\r\n\r\n");
 
         sci_Printf("  [8] 设置 APB-AP 访问地址...\r\n");
-#if 0
         // 向 APB-AP.TAR 写 0x80001080
         // CPU 调试组件中 DTRRX 的地址
         // ROM table 基地址 = 0x80000000
@@ -292,7 +292,6 @@ int main(void)
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
                              "  [✗] 写 APB-AP.TAR 失败\r\n\r\n",
                              "  [✓] APB-AP.TAR 已设置为 DTRRX 地址！\r\n\r\n");
-#endif
 
         JTAG_From_Pause_To_Select_DR_Scan();
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
@@ -312,10 +311,18 @@ int main(void)
         JTAG_From_Pause_To_Select_DR_Scan();
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                             DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-        uint32 halt_value = 0x1;
+
         ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 DRCR 失败\r\n\r\n",
                              "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
+        if(halt_value == 0x2) {
+            halt_value = 0x1;
+            JTAG_From_Pause_To_Select_DR_Scan();
+            sci_Printf("HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
+            continue;
+        } else {
+            halt_value = 0x2;
+        }
 
         // 向 JTAG-DP.SELECT 写 0x00000000
         // 选择 AHB-AP 并选择它的 bank0
@@ -362,7 +369,7 @@ int main(void)
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
                              "  [✗] 写 AHB-AP.TAR 失败\r\n\r\n",
                              "  [✓] AHB-AP.TAR 已设置为 AHB-AP 地址！\r\n\r\n");
-
+#if 0
         sci_Printf(" [13] 从 FLASH 读取 bin 并写入备芯片 SRAM...\r\n");
         sci_Printf("      - FLASH 源地址: 0x%08X\r\n", SRAM_BIN_FLASH_ADDR);
         sci_Printf("      - SRAM 目标地址: 0x%08X\r\n", TARGET_SRAM_BASE);
@@ -433,7 +440,7 @@ int main(void)
         CONTINUE_IF_MSG_FULL(
             write_errors > 0 || words_written != SRAM_BIN_WORDS,
             "  [✗] SRAM 写入失败\r\n\r\n", "  [✓] SRAM 写入成功！\r\n\r\n");
-
+#endif
         sci_Printf(" [14] 读取复位向量（程序入口地址）...\r\n");
         /* 
          * SRAM 中 bin 文件布局（ARM 向量表）：
@@ -447,11 +454,12 @@ int main(void)
         // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
         // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
         // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
-        uint32 entry_addr = 0x00005fbc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        uint32 entry_addr = 0x00000000;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
-#if 0
+
+#if 1
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
         
         if (result == 0) {

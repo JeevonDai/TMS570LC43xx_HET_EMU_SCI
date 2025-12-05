@@ -179,9 +179,11 @@ Bit[3] = 1 Force Active Power and Clock
 /* MCR p14, 0, R0, c0, c5, 0 - 从 R0 写入到 DTRTX */
 #define ARM_INSTR_MCR_R0_DTRTX  0xEE000E15U
 /* MOV PC, R0 - 将 R0 值加载到 PC */
-#define ARM_INSTR_MOV_PC_R0     0xE1A0F000U
+#define ARM_INSTR_MOV_R0_PC     0xE1A0F000U
 /* BX R0 - 跳转到 R0 指向的地址 */
 #define ARM_INSTR_BX_R0         0xE12FFF10U
+/* MOV R0, PC - 将 PC 值写入 R0 */
+#define ARM_INSTR_MOV_PC_R0     0xE1A0000FU
 
 /**
  * @brief APACC 请求类型定义
@@ -341,30 +343,6 @@ uint32 JTAG_DAP_Halt_CPU(void);
  * @return 1 表示成功，0 表示失败
  */
 uint32 JTAG_DAP_Resume_CPU(void);
-
-/**
- * @brief 通过 APB-AP 读取调试寄存器
- * @param addr 目标地址（如 DBG_DSCR_ADDR）
- * @param data 指向接收数据的指针
- * @return ACK 响应值
- */
-uint32 JTAG_APB_AP_Read(uint32 addr, uint32* data);
-
-/**
- * @brief 通过 APB-AP 写入调试寄存器
- * @param addr 目标地址（如 DBG_DSCR_ADDR）
- * @param data 要写入的数据
- * @return ACK 响应值
- */
-uint32 JTAG_APB_AP_Write(uint32 addr, uint32 data);
-
-/**
- * @brief 通过 AHB-AP 读取内存
- * @param addr 目标地址
- * @param data 指向接收数据的指针
- * @return ACK 响应值
- */
-uint32 JTAG_AHB_AP_Read(uint32 addr, uint32* data);
 
 /**
  * @brief 设置 CPU PC 指针并启动执行

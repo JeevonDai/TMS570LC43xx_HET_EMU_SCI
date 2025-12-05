@@ -25,25 +25,25 @@ void JTAG_GPIO_Init(void)
     /* 配置数据方向寄存器 */
     /* 输出引脚：TRST, TCK, TDI, TMS */
     hetREG1->DIR |= JTAG_OUTPUT_PINS;
-    
+
     /* 输入引脚：TDO */
     hetREG1->DIR &= ~JTAG_INPUT_PINS;
-    
+
     /* 禁用开漏输出 */
     hetREG1->PDR &= ~(JTAG_OUTPUT_PINS | JTAG_INPUT_PINS);
-    
+
     /* 配置上拉/下拉 */
     /* 使能上拉 */
     hetREG1->PULDIS &= ~(JTAG_OUTPUT_PINS | JTAG_INPUT_PINS);
     /* 选择上拉 */
     hetREG1->PSL |= (JTAG_OUTPUT_PINS | JTAG_INPUT_PINS);
-    
+
     /* 初始化输出引脚状态 */
-    JTAG_Set_TRST(1);  /* TRST 默认高电平（非激活） */
-    JTAG_Set_TCK(0);   /* TCK 默认低电平 */
-    JTAG_Set_TDI(0);   /* TDI 默认低电平 */
-    JTAG_Set_TMS(1);   /* TMS 默认高电平 */
-    
+    JTAG_Set_TRST(1); /* TRST 默认高电平（非激活） */
+    JTAG_Set_TCK(0);  /* TCK 默认低电平 */
+    JTAG_Set_TDI(0);  /* TDI 默认低电平 */
+    JTAG_Set_TMS(1);  /* TMS 默认高电平 */
+
     /* USER CODE BEGIN (2) */
     /* USER CODE END */
 }
@@ -53,13 +53,11 @@ void JTAG_GPIO_Init(void)
  */
 void JTAG_Set_TRST(uint32 value)
 {
-    if (value)
-    {
-        hetREG1->DSET = JTAG_TRST_MASK;  /* 设置为高电平 */
+    if (value) {
+        hetREG1->DSET = JTAG_TRST_MASK; /* 设置为高电平 */
     }
-    else
-    {
-        hetREG1->DCLR = JTAG_TRST_MASK;  /* 设置为低电平 */
+    else {
+        hetREG1->DCLR = JTAG_TRST_MASK; /* 设置为低电平 */
     }
 }
 
@@ -68,12 +66,10 @@ void JTAG_Set_TRST(uint32 value)
  */
 void JTAG_Set_TCK(uint32 value)
 {
-    if (value)
-    {
+    if (value) {
         hetREG1->DSET = JTAG_TCK_MASK;
     }
-    else
-    {
+    else {
         hetREG1->DCLR = JTAG_TCK_MASK;
     }
 }
@@ -83,12 +79,10 @@ void JTAG_Set_TCK(uint32 value)
  */
 void JTAG_Set_TDI(uint32 value)
 {
-    if (value)
-    {
+    if (value) {
         hetREG1->DSET = JTAG_TDI_MASK;
     }
-    else
-    {
+    else {
         hetREG1->DCLR = JTAG_TDI_MASK;
     }
 }
@@ -98,12 +92,10 @@ void JTAG_Set_TDI(uint32 value)
  */
 void JTAG_Set_TMS(uint32 value)
 {
-    if (value)
-    {
+    if (value) {
         hetREG1->DSET = JTAG_TMS_MASK;
     }
-    else
-    {
+    else {
         hetREG1->DCLR = JTAG_TMS_MASK;
     }
 }
@@ -123,18 +115,21 @@ void JTAG_Clock_Pulse(void)
 {
     /* 短暂延时以确保信号稳定 */
     volatile uint32 delay;
-    
+
     /* TCK 低电平 */
     JTAG_Set_TCK(0);
-    for (delay = 0; delay < 10; delay++);  /* 延时 */
-    
+    for (delay = 0; delay < 10; delay++)
+        ; /* 延时 */
+
     /* TCK 高电平 */
     JTAG_Set_TCK(1);
-    for (delay = 0; delay < 10; delay++);  /* 延时 */
-    
+    for (delay = 0; delay < 10; delay++)
+        ; /* 延时 */
+
     /* TCK 低电平 */
     JTAG_Set_TCK(0);
-    for (delay = 0; delay < 10; delay++);  /* 延时 */
+    for (delay = 0; delay < 10; delay++)
+        ; /* 延时 */
 }
 
 /**
@@ -143,12 +138,12 @@ void JTAG_Clock_Pulse(void)
 void JTAG_Reset(void)
 {
     uint32 i;
-    
+
     /* TMS 保持高电平，产生至少 5 个 TCK 时钟 */
     JTAG_Set_TMS(1);
     JTAG_Set_TDI(0);
-    
-    for (i = 0; i < 8; i++)  /* 产生 8 个时钟以确保复位 */
+
+    for (i = 0; i < 8; i++) /* 产生 8 个时钟以确保复位 */
     {
         JTAG_Clock_Pulse();
     }
@@ -172,31 +167,36 @@ uint32 JTAG_Shift_Bit(uint32 tms, uint32 tdi)
 {
     uint32 tdo;
     volatile uint32 delay;
-    
+
     /* TCK 低电平，设置 TMS 和 TDI */
     JTAG_Set_TCK(0);
     JTAG_Set_TMS(tms);
     JTAG_Set_TDI(tdi);
-    for (delay = 0; delay < 10; delay++);
-    
+    for (delay = 0; delay < 10; delay++)
+        ;
+
     /* TCK 上升沿，采样 TDO */
     JTAG_Set_TCK(1);
-    for (delay = 0; delay < 10; delay++);
+    for (delay = 0; delay < 10; delay++)
+        ;
     tdo = JTAG_Get_TDO();
-    
+
     /* TCK 下降沿 */
     JTAG_Set_TCK(0);
-    for (delay = 0; delay < 10; delay++);
-    
+    for (delay = 0; delay < 10; delay++)
+        ;
+
     return tdo;
 }
 
-void JTAG_From_Idle_To_Select_DR_Scan() {
+void JTAG_From_Idle_To_Select_DR_Scan()
+{
     /* 从 Idle -> Select_DR_Scan */
     JTAG_Shift_Bit(1, 0);
 }
 
-void JTAG_From_Pause_To_Idle() {
+void JTAG_From_Pause_To_Idle()
+{
     /* 从 Pause -> Exit2 */
     JTAG_Shift_Bit(1, 0);
 
@@ -207,7 +207,8 @@ void JTAG_From_Pause_To_Idle() {
     JTAG_Shift_Bit(0, 0);
 }
 
-void JTAG_From_Pause_To_Select_DR_Scan() {
+void JTAG_From_Pause_To_Select_DR_Scan()
+{
     /* 从 Pause -> Exit2 */
     JTAG_Shift_Bit(1, 0);
 
@@ -218,7 +219,8 @@ void JTAG_From_Pause_To_Select_DR_Scan() {
     JTAG_Shift_Bit(1, 0);
 }
 
-uint32 JTAG_Write_DR_Pause(uint32 dr_value, uint32 dr_len) {
+uint32 JTAG_Write_DR_Pause(uint32 dr_value, uint32 dr_len)
+{
     uint32 i;
     uint32 ret = 0;
     uint32 tdo = 0;
@@ -227,15 +229,14 @@ uint32 JTAG_Write_DR_Pause(uint32 dr_value, uint32 dr_len) {
 
     /* Select-DR-Scan -> Capture-DR */
     JTAG_Shift_Bit(0, 0);
-    
+
     /* Capture-DR -> Shift-DR */
     JTAG_Shift_Bit(0, 0);
-    
+
     /* 在 Shift-DR 状态移位数据 */
-    for (i = 0; i < dr_len - 1; i++)
-    {
+    for (i = 0; i < dr_len - 1; i++) {
         uint32 bit = (dr_value >> i) & 0x01U;
-        tdo = JTAG_Shift_Bit(0, bit);  /* TMS=0 保持在 Shift-DR */
+        tdo = JTAG_Shift_Bit(0, bit); /* TMS=0 保持在 Shift-DR */
         ret |= (tdo << i);
     }
 
@@ -243,70 +244,70 @@ uint32 JTAG_Write_DR_Pause(uint32 dr_value, uint32 dr_len) {
     uint32 last_bit = (dr_value >> (dr_len - 1)) & 0x01U;
     tdo = JTAG_Shift_Bit(1, last_bit);
     ret |= (tdo << (dr_len - 1));
-    
+
     /* Exit1-DR -> Pause-DR */
     JTAG_Shift_Bit(0, 0);
 
     return ret;
 }
 
-uint32 JTAG_Read_DR_Pause(uint32 dr_len) {
+uint32 JTAG_Read_DR_Pause(uint32 dr_len)
+{
     uint32 i;
     uint32 tdo = 0;
     uint32 ret = 0;
 
     /* 前提：当前已经在 Select-DR-Scan 状态 */
-    
+
     /* Select-DR-Scan -> Capture-DR */
     JTAG_Shift_Bit(0, 0);
-    
+
     /* Capture-DR -> Shift-DR 进入移位状态 */
     JTAG_Shift_Bit(0, 0);
-    
+
     /* 在 Shift-DR 状态继续移位并读取剩余数据 */
-    for (i = 0; i < dr_len - 1; i++)
-    {
-        tdo = JTAG_Shift_Bit(0, 0);  /* TMS=0 保持在 Shift-DR */
+    for (i = 0; i < dr_len - 1; i++) {
+        tdo = JTAG_Shift_Bit(0, 0); /* TMS=0 保持在 Shift-DR */
         ret |= (tdo << i);
     }
-    
+
     /* 最后一位，TMS=1 退出 Shift-DR 到 Exit1-DR */
     tdo = JTAG_Shift_Bit(1, 0);
     ret |= (tdo << (dr_len - 1));
-    
+
     /* Exit1-DR -> Pause-DR */
     JTAG_Shift_Bit(0, 0);
-    
+
     return ret;
 }
 
-uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len) {
+uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len)
+{
     uint32 i;
     uint32 ret = 0;
     uint32 tdo = 0;
 
     /* Select-DR-Scan -> Select-IR-Scan */
     JTAG_Shift_Bit(1, 0);
-    
+
     /* Select-IR-Scan -> Capture-IR */
     JTAG_Shift_Bit(0, 0);
-    
+
     /* Capture-IR -> Shift-IR */
     JTAG_Shift_Bit(0, 0);
-    
+
     /* 在 Shift-IR 状态移位数据 */
-    for (i = 0; i < ir_len - 1; i++)
-    {
+    for (i = 0; i < ir_len - 1; i++) {
         uint32 bit = (ir_value >> i) & 0x01U;
-        tdo = JTAG_Shift_Bit(0, bit);  /* TMS=0 保持在 Shift-IR */
+        tdo = JTAG_Shift_Bit(0, bit); /* TMS=0 保持在 Shift-IR */
         ret |= (tdo << i);
     }
-    
+
     /* 最后一位，TMS=1 退出 Shift-IR 到 Exit1-IR */
     uint32 last_bit = (ir_value >> (ir_len - 1)) & 0x01U;
     tdo = JTAG_Shift_Bit(1, last_bit);
     ret |= (tdo << (ir_len - 1));
-    
+
     /* Exit1-IR -> Pause-IR */
     JTAG_Shift_Bit(0, 0);
 
@@ -318,44 +319,47 @@ uint32 JTAG_Write_IR_Pause(uint32 ir_value, uint32 ir_len) {
  * @brief 连接到 ICEPick TAP
  * @return 1 表示成功，0 表示失败
  */
-void JTAG_ICEPick_Connect(void) {
+void JTAG_ICEPick_Connect(void)
+{
     // 1. 从 Pause-DR 回到 Idle (如果当前在 Pause 状态)
     JTAG_From_Pause_To_Idle();
-    
+
     // 2. Idle -> Select-DR-Scan
     JTAG_Shift_Bit(1, 0);
-    
+
     // 3. 写入 CONNECT 指令 (000111b = 0x07) 到 IR
     JTAG_Write_IR_Pause(ICEPICK_IR_CONNECT, ICEPICK_IR_LENGTH);
-    
+
     // 4. 回到 Select-DR-Scan 准备写 DR
     JTAG_From_Pause_To_Select_DR_Scan();
-    
+
     // 5. 写入 Debug Connect Register (DCON)
     //    bit[7] = 1: 写使能 (WRITEENABLE)
     //    bit[3:0] = 1001b: 连接密钥 (CONNECTKEY)
     //    完整值：0x89 = 10001001b
-    JTAG_Write_DR_Pause(ICEPICK_DCON_CONNECTKEY | ICEPICK_DCON_WRITEENABLE, ICEPICK_DCON_LENGTH);
+    JTAG_Write_DR_Pause(ICEPICK_DCON_CONNECTKEY | ICEPICK_DCON_WRITEENABLE,
+                        ICEPICK_DCON_LENGTH);
 }
 
 /**
  * @brief 读取 ICEPick 连接状态
  * @return DCON 寄存器的值
  */
-uint32 JTAG_ICEPick_Read_DCON(void) {
+uint32 JTAG_ICEPick_Read_DCON(void)
+{
     uint32 dcon_value;
-    
+
     // 6. 准备读 DR
     JTAG_From_Pause_To_Select_DR_Scan();
-    
+
     // 7. 写入读命令 (bit[7]=0 表示读操作)
     // 读写操作都是在 Update-DR 阶段，WRITEENABLE=0 不会改变 DCON 值
     JTAG_Write_DR_Pause(0x00, ICEPICK_DCON_LENGTH);
-    
+
     // 8. 再次进入 Shift-DR 读取实际值
     JTAG_From_Pause_To_Select_DR_Scan();
     dcon_value = JTAG_Read_DR_Pause(ICEPICK_DCON_LENGTH);
-    
+
     return dcon_value;
 }
 
@@ -432,7 +436,7 @@ uint32 JTAG_DPACC_Write(uint8 addr, uint32 data)
     for (i = 3; i < 35; i++) {
         JTAG_Shift_Bit(0, 0);
     }
-    
+
     // 最后一位 ICEPick bypass，退出
     JTAG_Shift_Bit(1, 0);
 
@@ -592,7 +596,7 @@ uint32 JTAG_APACC_Write(uint8 addr, uint32* data)
     // 读取 DP.RDBUFF 来获取 APACC 写操作的真实 ACK
     uint32 dummy_data = 0;
     ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, &dummy_data);
-
+    *data = dummy_data;
     return ack;
 }
 
@@ -709,7 +713,8 @@ uint32 JTAG_DAP_PowerUp(void)
         }
 
         // 检查上电确认位
-        if ((ctrl_stat & DP_CTRL_CSYSPWRUPACK) && (ctrl_stat & DP_CTRL_CDBGPWRUPACK)) {
+        if ((ctrl_stat & DP_CTRL_CSYSPWRUPACK) &&
+            (ctrl_stat & DP_CTRL_CDBGPWRUPACK)) {
             return 1;  // 上电成功
         }
 
@@ -754,91 +759,10 @@ uint32 JTAG_DAP_Resume_CPU(void)
     // 2. 配置 APB-AP 的 CSW 寄存器（设置访问大小、地址增量等）
     // 3. 写 TAR 寄存器（设置目标地址为 DRCR 寄存器地址）
     // 4. 通过 DRW 寄存器写入 DRCR，发送 RESTART 请求，使 CPU 退出调试模式
-    
     return 0;
 }
 
-/**
- * @brief 通过 APB-AP 读取调试寄存器
- * @param addr 目标地址（如 DBG_DSCR_ADDR）
- * @param data 指向接收数据的指针
- * @return ACK 响应值
- * 
- * 步骤：
- * 1. 选择 APB-AP（SELECT = 0x01000000）
- * 2. 配置 CSW（32-bit 访问，DbgSwEnable=1）
- * 3. 设置 TAR 为目标地址
- * 4. 从 DRW 读取数据
- */
-uint32 JTAG_APB_AP_Read(uint32 addr, uint32* data)
-{
-    uint32 ack = 0;
-    uint32 tar_addr = addr;
-
-    /* 1. 选择 APB-AP (APSEL = 1) */
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
-    uint32 select_value = 0x01000000U;  /* APB-AP */
-    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
-    if (ack != DPACC_ACK_OK) {
-        return ack;
-    }
-
-    /* 2. 切换到 APACC，配置 CSW（32-bit 访问，无自动递增）*/
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
-    uint32 csw_value = 0x80000002U;  /* APB-AP: DbgSwEnable=1, Size=32-bit */
-    ack = JTAG_APACC_Write(AP_REG_CSW, &csw_value);
-    if (ack != DPACC_ACK_OK) {
-        return ack;
-    }
-
-    /* 3. 设置 TAR */
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
-    ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
-    if (ack != DPACC_ACK_OK) {
-        return ack;
-    }
-
-    /* 4. 从 DRW 读取数据（发送读请求）*/
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
-    /* 注意：AP 读操作是流水线式的，第一次读取只是发送请求，
-     * 返回的数据是上一次 AP 操作的结果 */
-    ack = JTAG_APACC_Read(AP_REG_DRW, NULL);  /* 忽略此次返回的数据 */
-
-    /* 5. 切换到 DPACC，读取 RDBUFF 获取真正的 DRW 数据 */
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
-    ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, data);
-
-    return ack;
-}
-
-/**
- * @brief 通过 APB-AP 写入调试寄存器
- * @param addr 目标地址（如 DBG_DSCR_ADDR）
- * @param data 要写入的数据
- * @return ACK 响应值
- * 
- * 注意：调用前需确保已选择 APB-AP（SELECT = 0x01000000）
- * 
- * 步骤：
- * 1. 设置 TAR 为目标地址
- * 2. 向 DRW 写入数据
- */
-uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32 write_data)
+uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
 {
     uint32 ack = 0;
 
@@ -856,9 +780,53 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32 write_data)
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
     
-    ack = JTAG_APACC_Write(AP_REG_DRW, &write_data);
+    ack = JTAG_APACC_Write(AP_REG_DRW, write_data);
 
     return ack;
+}
+
+/**
+ * @brief 读取 CPU 当前 PC 指针（CPU 必须处于 HALT 状态）
+ * @param pc_value 输出参数，存储读取到的 PC 值
+ * @return 0 表示成功，非0 表示失败
+ */
+
+uint32 JTAG_Read_PC(uint32* pc_value)
+{
+    uint32 ack = 0;
+    volatile uint32 delay;
+
+    /* 1. 激活 APB-AP */
+    uint32 select_value = 0x01000000;
+    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
+    if (ack != DPACC_ACK_OK) {
+        return 1;
+    }
+
+    uint32 instruction = ARM_INSTR_MOV_PC_R0;
+    /* 2. 通过 ITR 执行: MOV R0, PC */
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);  /* MOV R0, PC */
+    if (ack != DPACC_ACK_OK) {
+        return 2;
+    }
+    JTAG_From_Pause_To_Select_DR_Scan();
+    for (delay = 0; delay < 10000; delay++);
+
+    /* 3. 通过 ITR 执行: MCR p14, 0, R0, c0, c5, 0 (将 R0 写入 DTRTX) */
+    instruction = ARM_INSTR_MCR_R0_DTRTX;
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
+    if (ack != DPACC_ACK_OK) {
+        return 3;
+    }
+    JTAG_From_Pause_To_Select_DR_Scan();
+    for (delay = 0; delay < 10000; delay++);
+
+    /* 4. 读取 DTRTX 获取 PC 值 */
+    ack = JTAG_APB_AP_Write(DBG_DTRTX_ADDR, &pc_value);
+    if (ack != DPACC_ACK_OK) {
+        return 4;
+    }
+    return 0;
 }
 
 /**
@@ -870,48 +838,15 @@ uint32 JTAG_Set_PC_And_Run(uint32 entry_addr)
 {
     uint32 ack = 0;
 
-    /* 1. 再次激活 APB-AP */
-    uint32 select_value = 0x01000000;
-    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
-    if (ack != DPACC_ACK_OK) {
-        return 1;  /* 再次激活 APB-AP 失败 */
+    uint32 current_pc = 0;
+    uint32 result = JTAG_Read_PC(&current_pc);
+    if (result == 0) {
+        sci_Printf("当前 PC 指针: 0x%08X\r\n", current_pc);
     }
-
-    /* 2. 将入口地址写入 DTRRX */
-    ack = JTAG_APB_AP_Write(DBG_DTRRX_ADDR, entry_addr);
-    if (ack != DPACC_ACK_OK) {
-        return 2;  /* 写入 DTRRX 失败 */
+    else {
+        sci_Printf("读取 PC 失败，错误码: %d\r\n", result);
     }
-
-    /* 3. 通过 ITR 执行: MRC p14, 0, R0, c0, c5, 0 
-     *    将 DTRRX 的值读入 R0 */
-    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, ARM_INSTR_MRC_DTRRX_R0);
-    if (ack != DPACC_ACK_OK) {
-        return 3;  /* 写入 ITR 失败 */
-    }
-    JTAG_From_Pause_To_Select_DR_Scan();
-
-    volatile uint32 delay;
-    for (delay = 0; delay < 10000; delay++);
-
-    /* 4. 通过 ITR 执行: BX R0 
-     *    跳转到 R0 指向的地址（即 entry_addr）*/
-    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, ARM_INSTR_BX_R0);
-    if (ack != DPACC_ACK_OK) {
-        return 4;  /* 写入 ITR (BX R0) 失败 */
-    }
-    JTAG_From_Pause_To_Select_DR_Scan();
-
-    /* 等待指令执行完成 */
-    for (delay = 0; delay < 10000; delay++);
-
-    /* 5. 发送 RESTART 请求，恢复 CPU 执行 */
-    ack = JTAG_APB_AP_Write(DBG_DRCR_ADDR, DRCR_RESTART);
-    if (ack != DPACC_ACK_OK) {
-        return 5;  /* 发送 RESTART 失败 */
-    }
-
-    return 0;  /* 成功 */
+    return 0; /* 成功 */
 }
 
 /* USER CODE END */
