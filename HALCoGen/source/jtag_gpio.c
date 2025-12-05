@@ -601,91 +601,6 @@ uint32 JTAG_APACC_Write(uint8 addr, uint32* data)
 }
 
 /**
- * @brief 读 APACC 寄存器
- * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
- * @param data 指向接收数据的指针
- * @return ACK 响应值
- * 
- * 注意：调用此函数前需要先设置 IR 为 APACC + ICEPick BYPASS
- * APACC 读操作需要两次 DR 扫描：
- * 1. 第一次发送读请求（36 位：3 位请求 + 32 位占位 + 1 位 bypass）
- * 2. 第二次获取读取的数据（36 位：3 位 ACK + 32 位数据 + 1 位 bypass）
- */
-uint32 JTAG_APACC_Read(uint8 addr, uint32* data)
-{
-    uint32 i;
-    uint8 request = 0;
-    uint32 ack = 0;
-    uint32 read_data = 0;
-    uint32 tdo = 0;
-
-    // 构造 APACC 读请求（35 位）+ ICEPick BYPASS（1 位）
-    // [0] = 1 (读操作 RnW=1)
-    // [1] = addr[2] (A[2])
-    // [2] = addr[3] (A[3])
-    // [34:3] = 数据占位（填充 0）
-    // [35] = ICEPick BYPASS（填充 0）
-    request = ((addr & 0xC) >> 1) | 1U;  // A[3:2] -> bit[2:1], RnW=1 -> bit[0]
-
-    // 进入 DR 扫描发送读请求（假设已经在 Pause-DR 或 Pause-IR 状态）
-    JTAG_From_Pause_To_Select_DR_Scan();
-
-    // 进入 Shift-DR
-    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
-    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
-
-    // 移位前 3 位（地址和 RnW）
-    for (i = 0; i < 3; i++) {
-        uint32 bit = (request >> i) & 0x01U;
-        JTAG_Shift_Bit(0, bit);
-    }
-
-    // 移位 32 位占位数据（填充 0）
-    for (i = 0; i < 32; i++) {
-        JTAG_Shift_Bit(0, 0);
-    }
-
-    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
-    JTAG_Shift_Bit(1, 0);
-
-    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
-
-    // 再次进入 DR 扫描获取数据
-    JTAG_From_Pause_To_Select_DR_Scan();
-
-    // 进入 Shift-DR
-    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
-    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
-
-    // 读取前 3 位获取 ACK
-    // 注意：移入的位构成下一次请求，必须设置 RnW=1（读操作）
-    // 否则会发送写请求，可能意外修改 CSW 寄存器
-    tdo = JTAG_Shift_Bit(0, 1);  // bit[0] = 1 (RnW=1, 读操作)
-    ack = tdo & 0x01U;
-    tdo = JTAG_Shift_Bit(0, 0);  // bit[1] = 0 (A[2])
-    ack |= (tdo & 0x01U) << 1;
-    tdo = JTAG_Shift_Bit(0, 0);  // bit[2] = 0 (A[3])
-    ack |= (tdo & 0x01U) << 2;
-
-    // 读取 32 位数据（同时移入 0 作为占位数据）
-    for (i = 0; i < 32; i++) {
-        tdo = JTAG_Shift_Bit(0, 0);
-        read_data |= (tdo & 0x01U) << i;
-    }
-
-    // 读取 1 位 ICEPick BYPASS，最后一位退出
-    JTAG_Shift_Bit(1, 0);
-
-    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
-
-    if (data != 0) {
-        *data = read_data;
-    }
-
-    return ack;
-}
-
-/**
  * @brief 初始化 DAP 调试电源
  * @return 1 表示成功，0 表示失败
  */
@@ -810,21 +725,20 @@ uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
         return ack;
     }
 
-    /* 2. 从 DRW 发起读请求（第一次读，启动流水线） */
+    /* 2. 从 DRW 发起读请求（使用 APACC_Write 发送读请求，RnW=1） */
+    /* 注意：APACC 读操作是流水线化的，真正的数据需要从 RDBUFF 获取 */
     JTAG_From_Pause_To_Select_DR_Scan();
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
     
-    ack = JTAG_APACC_Read(AP_REG_DRW, &dummy_data);
+    /* 使用 APACC_Write 但设置读地址（AP_REG_DRW），触发读流水线 */
+    dummy_data = 0;
+    ack = JTAG_APACC_Write(AP_REG_DRW, &dummy_data);
     if (ack != DPACC_ACK_OK) {
         return ack;
     }
 
-    /* 3. 切换到 DPACC，读取 RDBUFF 获取真实数据 */
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-
+    /* 3. 读取 RDBUFF 获取真实数据（APACC_Write 内部已切换到 DPACC） */
     ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, read_data);
 
     return ack;

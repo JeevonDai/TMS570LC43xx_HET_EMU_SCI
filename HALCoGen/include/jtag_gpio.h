@@ -319,14 +319,6 @@ uint32 JTAG_DPACC_Read(uint8 addr, uint32* data);
 uint32 JTAG_APACC_Write(uint8 addr, uint32* data);
 
 /**
- * @brief 读 APACC 寄存器
- * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
- * @param data 指向接收数据的指针
- * @return ACK 响应值
- */
-uint32 JTAG_APACC_Read(uint8 addr, uint32* data);
-
-/**
  * @brief 初始化 DAP 调试电源
  * @return 1 表示成功，0 表示失败
  */
