@@ -596,8 +596,57 @@ uint32 JTAG_APACC_Write(uint8 addr, uint32* data)
     // 读取 DP.RDBUFF 来获取 APACC 写操作的真实 ACK
     uint32 dummy_data = 0;
     ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, &dummy_data);
-    *data = dummy_data;
+    // *data = dummy_data;
     return ack;
+}
+
+/**
+ * @brief 读 APACC 寄存器
+ * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
+ * @param data 指向接收数据的指针
+ * @return ACK 响应值
+ * 
+ * 注意：调用此函数前需要先设置 IR 为 APACC + ICEPick BYPASS
+ * 1. 发送 APACC 读请求（RnW=1）
+ * 2. 切换到 DPACC 读取 RDBUFF 获取数据
+ */
+uint32 JTAG_APACC_Read(uint8 addr, uint32* data)
+{
+    uint32 i;
+    uint8 request = 0;
+
+    // 构造 APACC 读请求（35 位）+ ICEPick BYPASS（1 位）
+    // [0] = 1 (读操作 RnW=1)
+    // [1] = addr[2] (A[2])
+    // [2] = addr[3] (A[3])
+    request = ((addr & 0xC) >> 1) | 1U;
+
+    // 进入 DR 扫描发送读请求（假设已经在 Pause-DR 或 Pause-IR 状态）
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 移位 35 位请求 + 1 位 Bypass
+    for (i = 0; i < 35; i++) {
+        uint32 bit = (request >> i) & 0x01U;
+        if (i >= 3) bit = 0;  // 数据位填充 0
+        JTAG_Shift_Bit(0, bit);
+    }
+
+    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
+    JTAG_Shift_Bit(1, 0);
+
+    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
+
+    // 切换到 DPACC 指令读取 RDBUFF 来获取真实数据
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+    // 读取 RDBUFF
+    return JTAG_DPACC_Read(DP_ADDR_RDBUFF, data);
 }
 
 /**
@@ -644,36 +693,59 @@ uint32 JTAG_DAP_PowerUp(void)
 
 /**
  * @brief 挂起目标 CPU（通过 APB-AP 访问 DRCR 寄存器）
- * @return 0 表示成功，1 表示失败
+ * @return 0 表示成功，非0 表示失败
  * 
  * 注意：TMS570LC4357 使用 APB-AP 访问 DRCR (Debug Run Control Register)
- * 这与标准 ARM 实现不同，不使用 MEM-AP
  */
 uint32 JTAG_DAP_Halt_CPU(void)
 {
-    // TODO: 需要通过 APACC 访问 APB-AP
-    // 1. 选择 APB-AP (通过 SELECT 寄存器)
-    // 2. 配置 APB-AP 的 CSW 寄存器（设置访问大小、地址增量等）
-    // 3. 写 TAR 寄存器（设置目标地址为 DRCR 寄存器地址）
-    // 4. 通过 DRW 寄存器写入 DRCR，发送 HALT 请求，使 CPU 进入调试模式
+    uint32 ack = 0;
+    uint32 data = DRCR_HALT;
+    uint32 i;
+    volatile uint32 delay;
 
-    // 这里只是一个占位符，显示流程
-    return 0;
+    // 1. 选择 APB-AP (APSEL=1, BANK=0)
+    //    Bit 31:24 APSEL = 1
+    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, 0x01000000);
+    if (ack != DPACC_ACK_OK) return 1;
+
+    // 2. 写 DRCR 发送 HALT 请求
+    ack = JTAG_APB_AP_Write(DBG_DRCR_ADDR, &data);
+    if (ack != DPACC_ACK_OK) return 2;
+
+    // 3. 等待 CPU 进入 Halt 状态
+    for (i = 0; i < 200; i++) {
+        uint32 dscr = 0;
+        JTAG_Read_DSCR(&dscr);
+        if (dscr & DSCR_HALTED) {
+            return 0;  // 成功 Halt
+        }
+        for (delay = 0; delay < 1000; delay++)
+            ;
+    }
+
+    return 3;  // 等待 Halt 超时
 }
 
 /**
  * @brief 恢复目标 CPU（通过 APB-AP 访问 DRCR 寄存器）
- * @return 0 表示成功，1 表示失败
+ * @return 0 表示成功，非0 表示失败
  * 
  * 注意：写入 DRCR 的 RESTART 请求位，使 CPU 退出调试模式
  */
 uint32 JTAG_DAP_Resume_CPU(void)
 {
-    // TODO: 需要通过 APACC 访问 APB-AP
-    // 1. 选择 APB-AP (通过 SELECT 寄存器)
-    // 2. 配置 APB-AP 的 CSW 寄存器（设置访问大小、地址增量等）
-    // 3. 写 TAR 寄存器（设置目标地址为 DRCR 寄存器地址）
-    // 4. 通过 DRW 寄存器写入 DRCR，发送 RESTART 请求，使 CPU 退出调试模式
+    uint32 ack = 0;
+    uint32 data = DRCR_RESTART;
+
+    // 1. 选择 APB-AP (APSEL=1)
+    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, 0x01000000);
+    if (ack != DPACC_ACK_OK) return 1;
+
+    // 2. 写 DRCR 发送 RESTART 请求
+    ack = JTAG_APB_AP_Write(DBG_DRCR_ADDR, &data);
+    if (ack != DPACC_ACK_OK) return 2;
+
     return 0;
 }
 
@@ -684,7 +756,7 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
     /* 1. 切换到 APACC，设置 TAR */
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
+
     ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
     if (ack != DPACC_ACK_OK) {
         return ack;
@@ -694,7 +766,7 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
     JTAG_From_Pause_To_Select_DR_Scan();
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
+
     ack = JTAG_APACC_Write(AP_REG_DRW, write_data);
 
     return ack;
@@ -713,33 +785,25 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
 uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
 {
     uint32 ack = 0;
-    uint32 dummy_data = 0;
 
     /* 1. 切换到 APACC，设置 TAR（目标地址） */
-    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_From_Pause_To_Select_DR_Scan();  // 确保从 Pause 状态开始
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
+
     ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
     if (ack != DPACC_ACK_OK) {
         return ack;
     }
 
-    /* 2. 从 DRW 发起读请求（使用 APACC_Write 发送读请求，RnW=1） */
-    /* 注意：APACC 读操作是流水线化的，真正的数据需要从 RDBUFF 获取 */
+    /* 2. 从 DRW 发起读请求 */
+    /* 注意：JTAG_APACC_Write 结束时 IR 变成了 DPACC，必须切回 APACC */
     JTAG_From_Pause_To_Select_DR_Scan();
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-    
-    /* 使用 APACC_Write 但设置读地址（AP_REG_DRW），触发读流水线 */
-    dummy_data = 0;
-    ack = JTAG_APACC_Write(AP_REG_DRW, &dummy_data);
-    if (ack != DPACC_ACK_OK) {
-        return ack;
-    }
 
-    /* 3. 读取 RDBUFF 获取真实数据（APACC_Write 内部已切换到 DPACC） */
-    ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, read_data);
+    /* 使用 APACC_Read 读取 DRW，它会自动处理 RDBUFF 读取 */
+    ack = JTAG_APACC_Read(AP_REG_DRW, read_data);
 
     return ack;
 }
@@ -750,27 +814,67 @@ uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
  * @return 0 表示成功，非0 表示失败
  */
 
+uint32 JTAG_Read_DSCR(uint32* dscr_value)
+{
+    return JTAG_APB_AP_Read(DBG_DSCR_ADDR, dscr_value);
+}
+
+/**
+ * @brief 读取 CPU 当前 PC 指针（CPU 必须处于 HALT 状态）
+ * @param pc_value 输出参数，存储读取到的 PC 值
+ * @return 0 表示成功，非0 表示失败
+ */
+
+// 辅助宏或函数等待 InstrCompl
+#define WAIT_INSTR_COMPL()                                                     \
+    do {                                                                       \
+        uint32 retry = 100;                                                    \
+        uint32 dscr_curr = 0;                                                  \
+        while (retry--) {                                                      \
+            JTAG_Read_DSCR(&dscr_curr);                                        \
+            if (dscr_curr & DSCR_INSTRCOML_L) break;                           \
+            for (delay = 0; delay < 1000; delay++)                             \
+                ;                                                              \
+        }                                                                      \
+        if (retry == 0) return 0x12; /* 等待指令完成超时 */                    \
+    } while (0)
+
 uint32 JTAG_Read_PC(uint32* pc_value)
 {
     uint32 ack = 0;
+    uint32 dscr = 0;
     volatile uint32 delay;
 
-    /* 1. 激活 APB-AP */
+    /* 1. 检查 CPU 状态 (DSCR) */
+    ack = JTAG_Read_DSCR(&dscr);
+    if (ack != DPACC_ACK_OK) {
+        return 0x10;  // 读取 DSCR 失败
+    }
+
+    // 检查 HALTED 位 (bit 0)
+    if (!(dscr & DSCR_HALTED)) {
+        // 尝试再次读取，以防状态更新延迟
+        JTAG_Read_DSCR(&dscr);
+        if (!(dscr & DSCR_HALTED)) {
+            return 0x11;  // CPU 未处于 Halt 状态
+        }
+    }
+
+    /* 2. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
     uint32 select_value = 0x01000000;
     ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
-    if (ack != DPACC_ACK_OK) {
-        return 1;
-    }
-    JTAG_From_Pause_To_Select_DR_Scan();
+    if (ack != DPACC_ACK_OK) return 0x13;
 
-    uint32 instruction = ARM_INSTR_MOV_R0_PC;
+    WAIT_INSTR_COMPL();
+
     /* 2. 通过 ITR 执行: MOV R0, PC */
-    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);  /* MOV R0, PC */
+    uint32 instruction = ARM_INSTR_MOV_R0_PC;
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction); /* MOV R0, PC */
     if (ack != DPACC_ACK_OK) {
         return 2;
     }
-    JTAG_From_Pause_To_Select_DR_Scan();
-    for (delay = 0; delay < 10000; delay++);
+
+    WAIT_INSTR_COMPL();
 
     /* 3. 通过 ITR 执行: MCR p14, 0, R0, c0, c5, 0 (将 R0 写入 DTRTX) */
     instruction = ARM_INSTR_MCR_R0_DTRTX;
@@ -778,8 +882,8 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     if (ack != DPACC_ACK_OK) {
         return 3;
     }
-    JTAG_From_Pause_To_Select_DR_Scan();
-    for (delay = 0; delay < 10000; delay++);
+
+    WAIT_INSTR_COMPL();
 
     /* 4. 读取 DTRTX 获取 PC 值 */
     ack = JTAG_APB_AP_Read(DBG_DTRTX_ADDR, pc_value);

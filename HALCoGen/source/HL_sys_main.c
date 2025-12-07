@@ -460,6 +460,11 @@ int main(void)
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
 
 #if 1
+        // 1. 先 Halt CPU
+        if (JTAG_DAP_Halt_CPU() != 0) {
+            sci_Printf("  [✗] 挂起 CPU 失败\r\n\r\n");
+            continue;
+        }
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
         
         if (result == 0) {
