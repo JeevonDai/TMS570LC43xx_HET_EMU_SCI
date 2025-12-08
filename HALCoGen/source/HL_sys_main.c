@@ -324,6 +324,17 @@ int main(void)
             sci_Printf("HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
             continue;
         }
+
+        uint32 dscr = 0;
+        ack = JTAG_Read_DSCR(&dscr);
+        if (ack != DPACC_ACK_OK) {
+            return 0x10;  // 读取 DSCR 失败
+        }
+        sci_Printf("      - DSCR: 0x%08X\r\n", dscr);
+        CONTINUE_IF_MSG_FULL(dscr & DSCR_HALTED,
+                             "  [✗] CPU 未处于 Halt 状态\r\n\r\n",
+                             "  [✓] CPU 已处于 Halt 状态！\r\n\r\n");
+
         // 向 JTAG-DP.SELECT 写 0x00000000
         // 选择 AHB-AP 并选择它的 bank0
         sci_Printf(" [10] 激活 AHB-AP...\r\n");
@@ -441,6 +452,17 @@ int main(void)
             write_errors > 0 || words_written != SRAM_BIN_WORDS,
             "  [✗] SRAM 写入失败\r\n\r\n", "  [✓] SRAM 写入成功！\r\n\r\n");
 #endif
+
+        dscr = 0;
+        ack = JTAG_Read_DSCR(&dscr);
+        if (ack != DPACC_ACK_OK) {
+            return 0x10;  // 读取 DSCR 失败
+        }
+        sci_Printf("      - DSCR: 0x%08X\r\n", dscr);
+        CONTINUE_IF_MSG_FULL(dscr & DSCR_HALTED,
+                            "  [✗] CPU 未处于 Halt 状态\r\n\r\n",
+                            "  [✓] CPU 已处于 Halt 状态！\r\n\r\n");
+
         sci_Printf(" [14] 读取复位向量（程序入口地址）...\r\n");
         /* 
          * SRAM 中 bin 文件布局（ARM 向量表）：
@@ -460,11 +482,7 @@ int main(void)
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
 
 #if 1
-        // 1. 先 Halt CPU
-        if (JTAG_DAP_Halt_CPU() != 0) {
-            sci_Printf("  [✗] 挂起 CPU 失败\r\n\r\n");
-            continue;
-        }
+        // 此前处于 pause 状态
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
         
         if (result == 0) {

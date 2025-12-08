@@ -754,6 +754,7 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
     uint32 ack = 0;
 
     /* 1. 切换到 APACC，设置 TAR */
+    JTAG_From_Pause_To_Select_DR_Scan();  // 确保从 Pause 状态开始
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
@@ -848,22 +849,20 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     /* 1. 检查 CPU 状态 (DSCR) */
     ack = JTAG_Read_DSCR(&dscr);
     if (ack != DPACC_ACK_OK) {
-        return 0x10;  // 读取 DSCR 失败
+        return 1;  // 读取 DSCR 失败
     }
 
-    // 检查 HALTED 位 (bit 0)
-    if (!(dscr & DSCR_HALTED)) {
-        // 尝试再次读取，以防状态更新延迟
-        JTAG_Read_DSCR(&dscr);
-        if (!(dscr & DSCR_HALTED)) {
-            return 0x11;  // CPU 未处于 Halt 状态
-        }
+    ack = JTAG_Read_DSCR(&dscr);
+    if (ack != DPACC_ACK_OK) {
+        return 2;  // CPU 没有挂起
     }
 
     /* 2. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
     uint32 select_value = 0x01000000;
     ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
-    if (ack != DPACC_ACK_OK) return 0x13;
+    if (ack != DPACC_ACK_OK) {
+        return 3;  // 写 SELECT 失败
+    }
 
     WAIT_INSTR_COMPL();
 
@@ -871,7 +870,7 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     uint32 instruction = ARM_INSTR_MOV_R0_PC;
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction); /* MOV R0, PC */
     if (ack != DPACC_ACK_OK) {
-        return 2;
+        return 4;  // 写 ITR 失败
     }
 
     WAIT_INSTR_COMPL();
@@ -880,7 +879,7 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     instruction = ARM_INSTR_MCR_R0_DTRTX;
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
     if (ack != DPACC_ACK_OK) {
-        return 3;
+        return 5;  // 写 DTRTX 失败
     }
 
     WAIT_INSTR_COMPL();
@@ -888,7 +887,7 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     /* 4. 读取 DTRTX 获取 PC 值 */
     ack = JTAG_APB_AP_Read(DBG_DTRTX_ADDR, pc_value);
     if (ack != DPACC_ACK_OK) {
-        return 4;
+        return 6;  // 读 DTRTX 失败
     }
     return 0;
 }
@@ -902,7 +901,7 @@ uint32 JTAG_Set_PC_And_Run(uint32 entry_addr)
 {
     uint32 ack = 0;
 
-    uint32 current_pc = 0;
+    uint32 current_pc = 1;
     uint32 result = JTAG_Read_PC(&current_pc);
     if (result == 0) {
         sci_Printf("当前 PC 指针: 0x%08X\r\n", current_pc);
