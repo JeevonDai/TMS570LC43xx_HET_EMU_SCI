@@ -336,6 +336,10 @@ int main(void)
             sci_Printf("  [✗] APB-AP 写入内存失败，错误码: %d\r\n\r\n", result);
         }
 #endif
+        uint32 cnt = 0;
+        while (cnt > 10000) {
+            cnt++;
+        }
         // (2) DTRRX 地址写入 TAR
         dtrrx_addr = 0x80001080;
         ack = JTAG_APACC_Write(AP_REG_TAR, &dtrrx_addr);
@@ -396,6 +400,10 @@ int main(void)
                    ack);
 
         if(tmp == 1) {
+            drcr_addr = 0x80001090;
+            ack = JTAG_APACC_Write(AP_REG_TAR, &drcr_addr);
+            sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", drcr_addr,
+                       ack);
             ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
             JTAG_From_Pause_To_Select_DR_Scan();
             sci_Printf("第 2 处：HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
