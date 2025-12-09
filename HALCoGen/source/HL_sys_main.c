@@ -316,24 +316,91 @@ int main(void)
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 DRCR 失败\r\n\r\n",
                              "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
         tmp++;
-        if(tmp % 2) {
+        if (tmp % 2) {
             halt_value = 0x2;
-        } else {
+        }
+        else {
             halt_value = 0x1;
             JTAG_From_Pause_To_Select_DR_Scan();
             sci_Printf("HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
             continue;
         }
 
-        uint32 dscr = 0;
-        ack = JTAG_Read_DSCR(&dscr);
-        if (ack != DPACC_ACK_OK) {
-            return 0x10;  // 读取 DSCR 失败
+        /* ========== 通过 APB-AP 执行 CPU 指令写入内存 ========== */
+        sci_Printf(" [APB-AP] 通过 APB-AP 执行 CPU 指令写入内存...\r\n");
+#if 0
+        uint32 result = JTAG_APB_AP_Write_Memory(0x08000000, 0x11111111);
+        if (result == 0) {
+            sci_Printf("  [✓] APB-AP 写入内存成功！\r\n\r\n");
+        } else {
+            sci_Printf("  [✗] APB-AP 写入内存失败，错误码: %d\r\n\r\n", result);
         }
-        sci_Printf("      - DSCR: 0x%08X\r\n", dscr);
-        CONTINUE_IF_MSG_FULL(dscr & DSCR_HALTED,
-                             "  [✗] CPU 未处于 Halt 状态\r\n\r\n",
-                             "  [✓] CPU 已处于 Halt 状态！\r\n\r\n");
+#endif
+        // (2) DTRRX 地址写入 TAR
+        dtrrx_addr = 0x80001080;
+        ack = JTAG_APACC_Write(AP_REG_TAR, &dtrrx_addr);
+        sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", dtrrx_addr,
+                   ack);
+        // (3) 写入 0x11111111 到 DRW
+        uint32 data = 0x11111111;
+        ack = JTAG_APACC_Write(AP_REG_DRW, &data);
+        sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", data, ack);
+
+        // (4.1) ITR 地址写入 TAR 
+        uint32 itr_addr = 0x80001084;
+        ack = JTAG_APACC_Write(AP_REG_TAR, &itr_addr);
+        sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", itr_addr, ack);
+
+        // (4.2) ITR 写入 MRC p14,0,r0,c0,c5,0 指令
+        uint32 instruction = 0xEE100E15;
+        ack = JTAG_APACC_Write(AP_REG_DRW, &instruction);
+        sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", instruction,
+                   ack);
+
+        // (5) DTRRX 地址写入 TAR
+        dtrrx_addr = 0x80001080;
+        ack = JTAG_APACC_Write(AP_REG_TAR, &dtrrx_addr);
+        sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", dtrrx_addr,
+                   ack);
+
+        // (6) 写入 0x08000000 到 DRW
+        uint32 write_addr = 0x08000000;
+        ack = JTAG_APACC_Write(AP_REG_DRW, &write_addr);
+        sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", write_addr,
+                   ack);
+
+        // (7.1) ITR 地址写入 TAR 
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        itr_addr = 0x80001084;
+        ack = JTAG_APACC_Write(AP_REG_TAR, &itr_addr);
+        sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", itr_addr,
+                   ack);
+
+        // (7.2) ITR 写入 MRC p14,0,r1,c0,c5,0 指令
+        instruction = 0xEE101E15;
+        ack = JTAG_APACC_Write(AP_REG_DRW, &instruction);
+        sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", instruction,
+                   ack);
+
+        // (8) DTRRX 地址写入 TAR
+        itr_addr = 0x80001084;
+        ack = JTAG_APACC_Write(AP_REG_TAR, &itr_addr);
+        sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", itr_addr,
+                   ack);
+        
+        // (9) 写入 STR R0,[R1] 指令
+        instruction = 0xE5810000;
+        ack = JTAG_APACC_Write(AP_REG_DRW, &instruction);
+        sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", instruction,
+                   ack);
+
+        if(tmp == 1) {
+            ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
+            JTAG_From_Pause_To_Select_DR_Scan();
+            sci_Printf("第 2 处：HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
+            continue;
+        }
 
         // 向 JTAG-DP.SELECT 写 0x00000000
         // 选择 AHB-AP 并选择它的 bank0
@@ -453,16 +520,6 @@ int main(void)
             "  [✗] SRAM 写入失败\r\n\r\n", "  [✓] SRAM 写入成功！\r\n\r\n");
 #endif
 
-        dscr = 0;
-        ack = JTAG_Read_DSCR(&dscr);
-        if (ack != DPACC_ACK_OK) {
-            return 0x10;  // 读取 DSCR 失败
-        }
-        sci_Printf("      - DSCR: 0x%08X\r\n", dscr);
-        CONTINUE_IF_MSG_FULL(dscr & DSCR_HALTED,
-                            "  [✗] CPU 未处于 Halt 状态\r\n\r\n",
-                            "  [✓] CPU 已处于 Halt 状态！\r\n\r\n");
-
         sci_Printf(" [14] 读取复位向量（程序入口地址）...\r\n");
         /* 
          * SRAM 中 bin 文件布局（ARM 向量表）：
@@ -476,7 +533,8 @@ int main(void)
         // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
         // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
         // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
-        uint32 entry_addr = 0x00000000;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        uint32 entry_addr =
+            0x00000000; /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
@@ -484,7 +542,7 @@ int main(void)
 #if 1
         // 此前处于 pause 状态
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
-        
+
         if (result == 0) {
             sci_Printf("  [✓] CPU 已跳转到 SRAM 并开始执行！\r\n");
             sci_Printf("====================================\r\n");

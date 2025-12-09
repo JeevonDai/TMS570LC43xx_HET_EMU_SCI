@@ -587,6 +587,51 @@ uint32 JTAG_APACC_Write(uint8 addr, uint32* data)
     // 到达 Exit1-DR，进入 Pause-DR
     JTAG_Shift_Bit(0, 0);
 
+    return DPACC_ACK_OK;
+}
+
+
+uint32 JTAG_APACC_Write1(uint8 addr, uint32* data)
+{
+    uint32 i;
+    uint8 request = 0;
+    uint32 ack = 0;
+    uint32 tdo = 0;
+    uint32 write_data = (data != 0) ? (*data) : 0;
+
+    // 构造 APACC 写请求（35 位）
+    // [0] = 0 (写操作 RnW=0)
+    // [1] = addr[2] (A[2])
+    // [2] = addr[3] (A[3])
+    // [34:3] = data[31:0]
+    request = (addr & 0xC) >> 1;  // A[3:2] -> bit[2:1]
+    // RnW = 0 (写操作) 已经是 0
+
+    // 进入 DR 扫描（假设已经在 Pause-DR 或 Pause-IR 状态）
+    JTAG_From_Pause_To_Select_DR_Scan();
+
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 移位前 3 位（地址和 RnW）
+    for (i = 0; i < 3; i++) {
+        uint32 bit = (request >> i) & 0x01U;
+        JTAG_Shift_Bit(0, bit);
+    }
+
+    // 移位 32 位数据
+    for (i = 0; i < 32; i++) {
+        uint32 bit = (write_data >> i) & 0x01U;
+        JTAG_Shift_Bit(0, bit);
+    }
+
+    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
+    tdo = JTAG_Shift_Bit(1, 0);
+
+    // 到达 Exit1-DR，进入 Pause-DR
+    JTAG_Shift_Bit(0, 0);
+
     // 切换到 DPACC 指令读取 RDBUFF 来获取真实 ACK
     // （因为 APACC 写操作的 ACK 是延迟的，需要通过读取 DP.RDBUFF 获取）
     JTAG_From_Pause_To_Select_DR_Scan();
@@ -713,17 +758,6 @@ uint32 JTAG_DAP_Halt_CPU(void)
     ack = JTAG_APB_AP_Write(DBG_DRCR_ADDR, &data);
     if (ack != DPACC_ACK_OK) return 2;
 
-    // 3. 等待 CPU 进入 Halt 状态
-    for (i = 0; i < 200; i++) {
-        uint32 dscr = 0;
-        JTAG_Read_DSCR(&dscr);
-        if (dscr & DSCR_HALTED) {
-            return 0;  // 成功 Halt
-        }
-        for (delay = 0; delay < 1000; delay++)
-            ;
-    }
-
     return 3;  // 等待 Halt 超时
 }
 
@@ -815,80 +849,58 @@ uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
  * @return 0 表示成功，非0 表示失败
  */
 
-uint32 JTAG_Read_DSCR(uint32* dscr_value)
-{
-    return JTAG_APB_AP_Read(DBG_DSCR_ADDR, dscr_value);
-}
-
-/**
- * @brief 读取 CPU 当前 PC 指针（CPU 必须处于 HALT 状态）
- * @param pc_value 输出参数，存储读取到的 PC 值
- * @return 0 表示成功，非0 表示失败
- */
-
-// 辅助宏或函数等待 InstrCompl
-#define WAIT_INSTR_COMPL()                                                     \
-    do {                                                                       \
-        uint32 retry = 100;                                                    \
-        uint32 dscr_curr = 0;                                                  \
-        while (retry--) {                                                      \
-            JTAG_Read_DSCR(&dscr_curr);                                        \
-            if (dscr_curr & DSCR_INSTRCOML_L) break;                           \
-            for (delay = 0; delay < 1000; delay++)                             \
-                ;                                                              \
-        }                                                                      \
-        if (retry == 0) return 0x12; /* 等待指令完成超时 */                    \
-    } while (0)
-
 uint32 JTAG_Read_PC(uint32* pc_value)
 {
     uint32 ack = 0;
     uint32 dscr = 0;
-    volatile uint32 delay;
+    uint32 dummy;
 
-    /* 1. 检查 CPU 状态 (DSCR) */
-    ack = JTAG_Read_DSCR(&dscr);
-    if (ack != DPACC_ACK_OK) {
-        return 1;  // 读取 DSCR 失败
-    }
-
-    ack = JTAG_Read_DSCR(&dscr);
-    if (ack != DPACC_ACK_OK) {
-        return 2;  // CPU 没有挂起
-    }
-
-    /* 2. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
+    /* 1. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
     uint32 select_value = 0x01000000;
     ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
     if (ack != DPACC_ACK_OK) {
-        return 3;  // 写 SELECT 失败
+        return 2;  // 写 SELECT 失败
+    }
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+    /* 2. 如果 DTRTXfull，先读取清空 DTRTX */
+    if (dscr & DSCR_DTR_TX_FULL) {
+        sci_Printf("  [*] DTRTX 已满，先清空\r\n");
+        JTAG_APB_AP_Read(DBG_DTRTX_ADDR, &dummy);
     }
 
-    WAIT_INSTR_COMPL();
+    /* 3. 设置 DSCR.ITRen = 1 使能 ITR 指令执行 */
+    uint32 dscr_new = dscr | DSCR_ITR_EN;
+    ack = JTAG_APB_AP_Write(DBG_DSCR_ADDR, &dscr_new);
+    if (ack != DPACC_ACK_OK) {
+        return 3;  // 写 DSCR 失败
+    }
 
-    /* 2. 通过 ITR 执行: MOV R0, PC */
+    /* 4. 通过 ITR 执行: MOV R0, PC */
     uint32 instruction = ARM_INSTR_MOV_R0_PC;
-    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction); /* MOV R0, PC */
+    sci_Printf("  [*] 写入 ITR: MOV R0, PC (0x%08X)\r\n", instruction);
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
     if (ack != DPACC_ACK_OK) {
         return 4;  // 写 ITR 失败
     }
 
-    WAIT_INSTR_COMPL();
-
-    /* 3. 通过 ITR 执行: MCR p14, 0, R0, c0, c5, 0 (将 R0 写入 DTRTX) */
+    /* 5. 通过 ITR 执行: MCR p14, 0, R0, c0, c5, 0 (将 R0 写入 DTRTX) */
     instruction = ARM_INSTR_MCR_R0_DTRTX;
+    sci_Printf("  [*] 写入 ITR: MCR R0->DTRTX (0x%08X)\r\n", instruction);
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
     if (ack != DPACC_ACK_OK) {
-        return 5;  // 写 DTRTX 失败
+        return 5;  // 写 ITR 失败
     }
 
-    WAIT_INSTR_COMPL();
-
-    /* 4. 读取 DTRTX 获取 PC 值 */
+    /* 6. 读取 DTRTX 获取 PC 值 */
     ack = JTAG_APB_AP_Read(DBG_DTRTX_ADDR, pc_value);
     if (ack != DPACC_ACK_OK) {
         return 6;  // 读 DTRTX 失败
     }
+
+    sci_Printf("  [*] 读取到 DTRTX = 0x%08X\r\n", *pc_value);
     return 0;
 }
 
@@ -909,6 +921,98 @@ uint32 JTAG_Set_PC_And_Run(uint32 entry_addr)
     else {
         sci_Printf("读取 PC 失败，错误码: %d\r\n", result);
     }
+    return 0; /* 成功 */
+}
+
+/**
+ * @brief 通过 APB-AP 执行 CPU 指令，将数据写入指定内存地址
+ * @param mem_addr 目标内存地址（将存储到 R1）
+ * @param data 要写入的数据（将存储到 R0）
+ * @return 0 表示成功，非0 表示失败
+ * 
+ * 操作流程：
+ * 1. 激活 APB-AP（写 SELECT 寄存器选择 APB-AP）
+ * 2. 将 data 写入 DTRRX，再执行 MRC 指令将其移到 R0
+ * 3. 将 mem_addr 写入 DTRRX，再执行 MRC 指令将其移到 R1
+ * 4. 执行 STR R0, [R1] 指令，将 R0 的值写入 R1 指向的内存
+ */
+uint32 JTAG_APB_AP_Write_Memory(uint32 mem_addr, uint32 data)
+{
+    uint32 ack = 0;
+    uint32 write_val;
+
+    /* MRC p14, 0, r0, c0, c5, 0 - 从 DTRRX 读取到 R0 */
+    #define ARM_INSTR_MRC_DTRRX_R0_OP 0xEE100E15U
+    /* MRC p14, 0, r1, c0, c5, 0 - 从 DTRRX 读取到 R1 */
+    #define ARM_INSTR_MRC_DTRRX_R1_OP 0xEE101E15U
+    /* STR R0, [R1] - 将 R0 的值写入 R1 指向的地址 */
+    #define ARM_INSTR_STR_R0_R1_OP    0xE5810000U
+
+    sci_Printf("  [APB-AP] 开始通过 APB-AP 写入内存\r\n");
+    sci_Printf("  [APB-AP] 目标地址: 0x%08X, 数据: 0x%08X\r\n", mem_addr, data);
+
+    /* ========== 步骤 1: 激活 APB-AP ========== */
+    /* 写 0x01000000 到 JTAG-DP.SELECT，选择 APB-AP (APSEL=1) 和 bank 0 */
+    sci_Printf("  [1] 激活 APB-AP: 写 SELECT = 0x01000000\r\n");
+    ack = JTAG_DPACC_Write(DP_ADDR_SELECT, 0x01000000U);
+    if (ack != DPACC_ACK_OK) {
+        sci_Printf("  [!] 写 SELECT 失败, ACK=%d\r\n", ack);
+        return 1;
+    }
+
+    /* ========== 步骤 2: 设置 APB-AP.TAR = 0x80001080 (DTRRX) ========== */
+    /* ========== 步骤 3: 写 data 到 APB-AP.DRW (写入 DTRRX) ========== */
+    sci_Printf("  [2-3] 写入 DTRRX = 0x%08X\r\n", data);
+    write_val = data;
+    ack = JTAG_APB_AP_Write(DBG_DTRRX_ADDR, &write_val);
+    if (ack != DPACC_ACK_OK) {
+        sci_Printf("  [!] 写 DTRRX 失败, ACK=%d\r\n", ack);
+        return 3;
+    }
+
+    /* ========== 步骤 4: 执行 MRC p14, 0, r0, c0, c5, 0 ========== */
+    /* 将 DTRRX 的数据移动到 R0 寄存器 */
+    sci_Printf("  [4] 写入 ITR: MRC p14,0,r0,c0,c5,0 (0xEE100E15)\r\n");
+    write_val = ARM_INSTR_MRC_DTRRX_R0_OP;
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &write_val);
+    if (ack != DPACC_ACK_OK) {
+        sci_Printf("  [!] 写 ITR 失败, ACK=%d\r\n", ack);
+        return 4;
+    }
+    sci_Printf("  [*] R0 = 0x%08X (DTRRX->R0 完成)\r\n", data);
+
+    /* ========== 步骤 5: 设置 APB-AP.TAR = 0x80001080 (DTRRX) ========== */
+    /* ========== 步骤 6: 写 mem_addr 到 APB-AP.DRW (写入 DTRRX) ========== */
+    sci_Printf("  [5-6] 写入 DTRRX = 0x%08X\r\n", mem_addr);
+    write_val = mem_addr;
+    ack = JTAG_APB_AP_Write(DBG_DTRRX_ADDR, &write_val);
+    if (ack != DPACC_ACK_OK) {
+        sci_Printf("  [!] 写 DTRRX 失败, ACK=%d\r\n", ack);
+        return 5;
+    }
+
+    /* ========== 步骤 7: 执行 MRC p14, 0, r1, c0, c5, 0 ========== */
+    /* 将 DTRRX 的数据移动到 R1 寄存器 */
+    sci_Printf("  [7] 写入 ITR: MRC p14,0,r1,c0,c5,0 (0xEE101E15)\r\n");
+    write_val = ARM_INSTR_MRC_DTRRX_R1_OP;
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &write_val);
+    if (ack != DPACC_ACK_OK) {
+        sci_Printf("  [!] 写 ITR 失败, ACK=%d\r\n", ack);
+        return 6;
+    }
+    sci_Printf("  [*] R1 = 0x%08X (DTRRX->R1 完成)\r\n", mem_addr);
+
+    /* ========== 步骤 8-9: 执行 STR R0, [R1] ========== */
+    /* 将 R0 的值写入 R1 指向的内存地址 */
+    sci_Printf("  [8-9] 写入 ITR: STR R0,[R1] (0xE5810000)\r\n");
+    write_val = ARM_INSTR_STR_R0_R1_OP;
+    ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &write_val);
+    if (ack != DPACC_ACK_OK) {
+        sci_Printf("  [!] 写 ITR 失败, ACK=%d\r\n", ack);
+        return 7;
+    }
+
+    sci_Printf("  [APB-AP] 成功将 0x%08X 写入内存地址 0x%08X\r\n", data, mem_addr);
     return 0; /* 成功 */
 }
 

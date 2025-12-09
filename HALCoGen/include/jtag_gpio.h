@@ -361,18 +361,25 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data);
 uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data);
 
 /**
- * @brief 读取 DSCR 寄存器
- * @param dscr_value 输出参数
- * @return ACK
- */
-uint32 JTAG_Read_DSCR(uint32* dscr_value);
-
-/**
  * @brief 设置 CPU PC 指针并启动执行
  * @param entry_addr 程序入口地址
  * @return 0 表示成功，1 表示失败
  */
 uint32 JTAG_Set_PC_And_Run(uint32 entry_addr);
+
+/**
+ * @brief 通过 APB-AP 执行 CPU 指令，将数据写入指定内存地址
+ * @param mem_addr 目标内存地址（将存储到 R1）
+ * @param data 要写入的数据（将存储到 R0）
+ * @return 0 表示成功，非0 表示失败
+ * 
+ * 操作流程：
+ * 1. 激活 APB-AP（写 SELECT 寄存器选择 APB-AP）
+ * 2. 将 data 写入 DTRRX，再执行 MRC 指令将其移到 R0
+ * 3. 将 mem_addr 写入 DTRRX，再执行 MRC 指令将其移到 R1
+ * 4. 执行 STR R0, [R1] 指令，将 R0 的值写入 R1 指向的内存
+ */
+uint32 JTAG_APB_AP_Write_Memory(uint32 mem_addr, uint32 data);
 
 /* USER CODE END */
 
