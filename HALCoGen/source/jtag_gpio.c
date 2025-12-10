@@ -818,9 +818,9 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
     uint32 ack = 0;
 
     /* 1. 切换到 APACC，设置 TAR */
-    // JTAG_From_Pause_To_Select_DR_Scan();  // 确保从 Pause 状态开始
-    // JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-    //                     DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    JTAG_From_Pause_To_Select_DR_Scan();  // 确保从 Pause 状态开始
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
     ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
     if (ack != DPACC_ACK_OK) {
@@ -828,9 +828,9 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data)
     }
 
     /* 2. 向 DRW 写入数据 */
-    // JTAG_From_Pause_To_Select_DR_Scan();
-    // JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-    //                     DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
     ack = JTAG_APACC_Write(AP_REG_DRW, write_data);
 
@@ -852,9 +852,9 @@ uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
     uint32 ack = 0;
 
     /* 1. 切换到 APACC，设置 TAR（目标地址） */
-    // JTAG_From_Pause_To_Select_DR_Scan();  // 确保从 Pause 状态开始
-    // JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-    //                     DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    JTAG_From_Pause_To_Select_DR_Scan();  // 确保从 Pause 状态开始
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
     ack = JTAG_APACC_Write(AP_REG_TAR, &tar_addr);
     if (ack != DPACC_ACK_OK) {
@@ -862,10 +862,10 @@ uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
     }
 
     /* 2. 从 DRW 发起读请求 */
-    /* 注意：JTAG_APACC_Write 结束时 IR 变成了 DPACC-->在 APACC 状态读，必须-->不用切回 APACC */
-    // JTAG_From_Pause_To_Select_DR_Scan();
-    // JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-    //                     DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+    /* 注意：JTAG_APACC_Write 结束时 IR 变成了 DPACC，必须切回 APACC */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
     /* 使用 APACC_Read 读取 DRW，它会自动处理 RDBUFF 读取 */
     ack = JTAG_APACC_Read(AP_REG_DRW, read_data);

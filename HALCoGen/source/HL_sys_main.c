@@ -362,6 +362,9 @@ int main(void)
         uint32 dscr = 0;
         ack = JTAG_Read_DSCR(&dscr);
         sci_Printf("      - 读 DSCR: 0x%08X (ACK=0x%X)\r\n", dscr, ack);
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 dscr_new = dscr | DSCR_ITR_EN;
         ack = JTAG_APB_AP_Write(DBG_DSCR_ADDR, &dscr_new);
@@ -369,10 +372,17 @@ int main(void)
 
         ack = JTAG_Read_DSCR(&dscr);
         sci_Printf("      - 读 DSCR: 0x%08X (ACK=0x%X)\r\n", dscr, ack);
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 drcr = 0xfffffff;
         ack = JTAG_Read_DRCR(&drcr);
         sci_Printf("      - 读 DRCR: 0x%08X (ACK=0x%X)\r\n", drcr, ack);
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
 
         // (2) DTRRX 地址写入 TAR
         dtrrx_addr = 0x80001080;
