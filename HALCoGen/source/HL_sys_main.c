@@ -589,30 +589,20 @@ int main(void)
         // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
         // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
         // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
-        uint32 entry_addr =
-            0x00000000; /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        uint32 entry_addr = 0x00000000;
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
 
         // 此前处于 pause 状态
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
-
         if (result == 0) {
-            sci_Printf("  [✓] CPU 已跳转到 SRAM 并开始执行！\r\n");
-            sci_Printf("====================================\r\n");
             sci_Printf("  SRAM 加载完成，程序正在运行...\r\n");
-            sci_Printf("====================================\r\n\r\n");
         }
         else {
             sci_Printf("  [✗] 启动失败，错误码: %d\r\n", result);
-            sci_Printf("      错误含义:\r\n");
-            sci_Printf("        1 = 再次激活 APB-AP 失败\r\n");
-            sci_Printf("        2 = 写入 DTRRX 失败\r\n");
-            sci_Printf("        3 = 写入 ITR (MRC) 失败\r\n");
-            sci_Printf("        4 = 写入 ITR (BX) 失败\r\n");
-            sci_Printf("        5 = 发送 RESTART 失败\r\n");
         }
+        sci_Printf("====================================\r\n\r\n");
     }
     /* USER CODE END */
 

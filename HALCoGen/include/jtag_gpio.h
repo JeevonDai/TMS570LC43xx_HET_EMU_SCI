@@ -361,6 +361,13 @@ uint32 JTAG_APB_AP_Write(uint32 tar_addr, uint32* write_data);
 uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data);
 
 /**
+ * @brief 设置 CPU PC 指针（CPU 必须处于 HALT 状态）
+ * @param pc_value 要设置的 PC 值
+ * @return 0 表示成功，非0 表示失败
+ */
+uint32 JTAG_Set_PC(uint32 pc_value);
+
+/**
  * @brief 设置 CPU PC 指针并启动执行
  * @param entry_addr 程序入口地址
  * @return 0 表示成功，1 表示失败
