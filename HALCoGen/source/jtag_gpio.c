@@ -1031,4 +1031,22 @@ uint32 JTAG_APB_AP_Write_Memory(uint32 mem_addr, uint32 data)
     return 0; /* 成功 */
 }
 
+/**
+ * @brief 检查 ITR 指令执行是否完成
+ * @return 0 表示完成，1 表示超时
+ */
+uint32 JTAG_Wait_Instruction_Complete(void)
+{
+    uint32 dscr = 0;
+    uint32 timeout = 1000;
+
+    while (timeout--) {
+        JTAG_Read_DSCR(&dscr);
+        if (dscr & DSCR_INSTRCOML_L) {  // bit[24] = 1 表示指令完成
+            return 0;                   // 成功
+        }
+    }
+    return 1;  // 超时
+}
+
 /* USER CODE END */

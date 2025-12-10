@@ -381,6 +381,9 @@ uint32 JTAG_Set_PC_And_Run(uint32 entry_addr);
  */
 uint32 JTAG_APB_AP_Write_Memory(uint32 mem_addr, uint32 data);
 
+
+uint32 JTAG_Wait_Instruction_Complete(void);
+
 /* USER CODE END */
 
 #ifdef __cplusplus

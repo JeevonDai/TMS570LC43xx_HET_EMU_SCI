@@ -355,7 +355,7 @@ int main(void)
 #endif
 #if 1
         uint32 cnt = 0;
-        while (cnt > 10000) {
+        while (cnt < 10000) {
             cnt++;
         }
 
@@ -404,6 +404,11 @@ int main(void)
         ack = JTAG_APACC_Write(AP_REG_DRW, &instruction);
         sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", instruction,
                    ack);
+        if (JTAG_Wait_Instruction_Complete() != 0) {
+            sci_Printf("      - MRC R0 指令执行超时！\r\n");
+        } else {
+            sci_Printf("      - MRC R0 指令执行完成\r\n");
+        }
 
         // (5) DTRRX 地址写入 TAR
         dtrrx_addr = 0x80001080;
@@ -417,9 +422,7 @@ int main(void)
         sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", write_addr,
                    ack);
 
-        // (7.1) ITR 地址写入 TAR 
-        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+        // (7.1) ITR 地址写入 TAR
         itr_addr = 0x80001084;
         ack = JTAG_APACC_Write(AP_REG_TAR, &itr_addr);
         sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", itr_addr,
@@ -430,6 +433,11 @@ int main(void)
         ack = JTAG_APACC_Write(AP_REG_DRW, &instruction);
         sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", instruction,
                    ack);
+        if (JTAG_Wait_Instruction_Complete() != 0) {
+            sci_Printf("      - MRC R1 指令执行超时！\r\n");
+        } else {
+            sci_Printf("      - MRC R1 指令执行完成\r\n");
+        }
 
         // (8) DTRRX 地址写入 TAR
         itr_addr = 0x80001084;
@@ -442,6 +450,11 @@ int main(void)
         ack = JTAG_APACC_Write(AP_REG_DRW, &instruction);
         sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", instruction,
                    ack);
+        if (JTAG_Wait_Instruction_Complete() != 0) {
+            sci_Printf("      - STR R0,[R1] 指令执行超时！\r\n");
+        } else {
+            sci_Printf("      - STR R0,[R1] 指令执行完成\r\n");
+        }
 #endif
 #if 0
         // ===============================================
