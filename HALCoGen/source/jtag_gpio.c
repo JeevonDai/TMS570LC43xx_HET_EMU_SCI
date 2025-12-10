@@ -219,18 +219,6 @@ void JTAG_From_Pause_To_Select_DR_Scan()
     JTAG_Shift_Bit(1, 0);
 }
 
-void JTAG_From_Select_DR_Scan_To_Pause()
-{
-    /* 从 Select-DR-Scan -> Capture-DR */
-    JTAG_Shift_Bit(1, 0);
-
-    /* 从 Capture-DR Exit1-DR */
-    JTAG_Shift_Bit(1, 0);
-
-    /* 从 Exit1-DR -> Pause-DR */
-    JTAG_Shift_Bit(0, 0);
-}
-
 uint32 JTAG_Write_DR_Pause(uint32 dr_value, uint32 dr_len)
 {
     uint32 i;
@@ -1013,6 +1001,7 @@ uint32 JTAG_Set_PC_And_Run(uint32 entry_addr)
     else {
         sci_Printf("读取 PC 失败，错误码: %d\r\n", result);
     }
+#if 0
     result = JTAG_Set_PC(entry_addr);
     if (result != 0) {
         sci_Printf("设置 PC 失败，错误码: %d\r\n", result);
@@ -1024,6 +1013,7 @@ uint32 JTAG_Set_PC_And_Run(uint32 entry_addr)
     else {
         sci_Printf("读取 PC 失败，错误码: %d\r\n", result);
     }
+#endif
     return 0; /* 成功 */
 }
 

@@ -334,9 +334,8 @@ int main(void)
         }
         else {
             halt_value = 0x1;
-            JTAG_From_Pause_To_Select_DR_Scan();
             sci_Printf("HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
-            continue;
+            // continue;
         }
 
 #if 1
@@ -478,10 +477,6 @@ int main(void)
                              "  [✓] AHB-AP.CSW 访存模式设置成功！\r\n\r\n");
 
         sci_Printf(" [12] 设置 AHB-AP 访问地址...\r\n");
-        JTAG_From_Pause_To_Select_DR_Scan();
-        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-
         uint32 sdram_addr = 0x08000000;
         ack = JTAG_APACC_Write(AP_REG_TAR, &sdram_addr);
         sci_Printf("      - 写 AHB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", sdram_addr,
@@ -515,10 +510,6 @@ int main(void)
             }
 
             /* 先设置 TAR 地址 */
-            JTAG_From_Pause_To_Select_DR_Scan();
-            JTAG_Write_IR_Pause(
-                DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
             ack = JTAG_APACC_Write(AP_REG_TAR, &target_addr);
             if (ack != DPACC_ACK_OK) {
                 write_errors++;
@@ -574,12 +565,12 @@ int main(void)
          */
         // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
         // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
-        uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
-        // uint32 entry_addr = 0x00000000;
+        // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        uint32 entry_addr = 0x00000000;
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
-
+#if 1
         // 此前处于 pause 状态
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
         if (result == 0) {
@@ -589,6 +580,15 @@ int main(void)
             sci_Printf("  [✗] 启动失败，错误码: %d\r\n", result);
         }
         sci_Printf("====================================\r\n\r\n");
+
+        if (tmp == 1) {    
+            ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
+            CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 DRCR 失败\r\n\r\n",
+                                 "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
+            halt_value = 0x1;
+            sci_Printf("HALT 退出，CPU 继续运行，只有第一次\r\n");
+        }
+#endif
     }
     /* USER CODE END */
 
