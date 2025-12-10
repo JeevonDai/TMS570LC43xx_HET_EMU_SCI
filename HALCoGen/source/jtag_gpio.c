@@ -219,6 +219,18 @@ void JTAG_From_Pause_To_Select_DR_Scan()
     JTAG_Shift_Bit(1, 0);
 }
 
+void JTAG_From_Select_DR_Scan_To_Pause()
+{
+    /* 从 Select-DR-Scan -> Capture-DR */
+    JTAG_Shift_Bit(1, 0);
+
+    /* 从 Capture-DR Exit1-DR */
+    JTAG_Shift_Bit(1, 0);
+
+    /* 从 Exit1-DR -> Pause-DR */
+    JTAG_Shift_Bit(0, 0);
+}
+
 uint32 JTAG_Write_DR_Pause(uint32 dr_value, uint32 dr_len)
 {
     uint32 i;
@@ -590,61 +602,6 @@ uint32 JTAG_APACC_Write(uint8 addr, uint32* data)
     return DPACC_ACK_OK;
 }
 
-
-uint32 JTAG_APACC_Write1(uint8 addr, uint32* data)
-{
-    uint32 i;
-    uint8 request = 0;
-    uint32 ack = 0;
-    uint32 tdo = 0;
-    uint32 write_data = (data != 0) ? (*data) : 0;
-
-    // 构造 APACC 写请求（35 位）
-    // [0] = 0 (写操作 RnW=0)
-    // [1] = addr[2] (A[2])
-    // [2] = addr[3] (A[3])
-    // [34:3] = data[31:0]
-    request = (addr & 0xC) >> 1;  // A[3:2] -> bit[2:1]
-    // RnW = 0 (写操作) 已经是 0
-
-    // 进入 DR 扫描（假设已经在 Pause-DR 或 Pause-IR 状态）
-    JTAG_From_Pause_To_Select_DR_Scan();
-
-    // 进入 Shift-DR
-    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
-    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
-
-    // 移位前 3 位（地址和 RnW）
-    for (i = 0; i < 3; i++) {
-        uint32 bit = (request >> i) & 0x01U;
-        JTAG_Shift_Bit(0, bit);
-    }
-
-    // 移位 32 位数据
-    for (i = 0; i < 32; i++) {
-        uint32 bit = (write_data >> i) & 0x01U;
-        JTAG_Shift_Bit(0, bit);
-    }
-
-    // 移位 1 位 ICEPick BYPASS（填充 0，最后一位退出）
-    tdo = JTAG_Shift_Bit(1, 0);
-
-    // 到达 Exit1-DR，进入 Pause-DR
-    JTAG_Shift_Bit(0, 0);
-
-    // 切换到 DPACC 指令读取 RDBUFF 来获取真实 ACK
-    // （因为 APACC 写操作的 ACK 是延迟的，需要通过读取 DP.RDBUFF 获取）
-    JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-
-    // 读取 DP.RDBUFF 来获取 APACC 写操作的真实 ACK
-    uint32 dummy_data = 0;
-    ack = JTAG_DPACC_Read(DP_ADDR_RDBUFF, &dummy_data);
-    // *data = dummy_data;
-    return ack;
-}
-
 /**
  * @brief 读 APACC 寄存器
  * @param addr AP 寄存器地址（0x0, 0x4, 0x8, 0xC）
@@ -658,6 +615,9 @@ uint32 JTAG_APACC_Write1(uint8 addr, uint32* data)
 uint32 JTAG_APACC_Read(uint8 addr, uint32* data)
 {
     uint32 i;
+    uint32 tdo;
+    uint32 ack = 0;
+    uint32 read_data = 0;
     uint8 request = 0;
 
     // 构造 APACC 读请求（35 位）+ ICEPick BYPASS（1 位）
@@ -685,13 +645,37 @@ uint32 JTAG_APACC_Read(uint8 addr, uint32* data)
 
     JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
 
-    // 切换到 DPACC 指令读取 RDBUFF 来获取真实数据
     JTAG_From_Pause_To_Select_DR_Scan();
-    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
+    // 进入 Shift-DR
+    JTAG_Shift_Bit(0, 0);  // Select-DR -> Capture-DR
+    JTAG_Shift_Bit(0, 0);  // Capture-DR -> Shift-DR
+
+    // 读取前 3 位获取 ACK
+    // 注意：移入的位构成下一次请求，设置 RnW=1（读操作）确保不修改任何寄存器
+    tdo = JTAG_Shift_Bit(0, 1);  // bit[0] = 1 (RnW=1, 读操作)
+    ack = tdo & 0x01U;
+    tdo = JTAG_Shift_Bit(0, 0);  // bit[1] = 0 (A[2])
+    ack |= (tdo & 0x01U) << 1;
+    tdo = JTAG_Shift_Bit(0, 0);  // bit[2] = 0 (A[3])
+    ack |= (tdo & 0x01U) << 2;
+
+    // 读取 32 位数据（同时移入 0 作为占位数据）
+    for (i = 0; i < 32; i++) {
+        tdo = JTAG_Shift_Bit(0, 0);
+        read_data |= (tdo & 0x01U) << i;
+    }
+
+    // 读取 1 位 ICEPick BYPASS，最后一位退出
+    JTAG_Shift_Bit(1, 0);
+
+    JTAG_Shift_Bit(0, 0);  // 进入 Pause-DR
+
+    if (data != 0) {
+        *data = read_data;
+    }
     // 读取 RDBUFF
-    return JTAG_DPACC_Read(DP_ADDR_RDBUFF, data);
+    return ack;
 }
 
 /**
@@ -852,38 +836,23 @@ uint32 JTAG_APB_AP_Read(uint32 tar_addr, uint32* read_data)
 uint32 JTAG_Read_PC(uint32* pc_value)
 {
     uint32 ack = 0;
-    uint32 dscr = 0;
-    uint32 dummy;
 
     /* 1. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
     uint32 select_value = 0x01000000;
     ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
     if (ack != DPACC_ACK_OK) {
-        return 2;  // 写 SELECT 失败
+        return ack;  // 写 SELECT 失败
     }
     JTAG_From_Pause_To_Select_DR_Scan();
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-
-    /* 2. 如果 DTRTXfull，先读取清空 DTRTX */
-    if (dscr & DSCR_DTR_TX_FULL) {
-        sci_Printf("  [*] DTRTX 已满，先清空\r\n");
-        JTAG_APB_AP_Read(DBG_DTRTX_ADDR, &dummy);
-    }
-
-    /* 3. 设置 DSCR.ITRen = 1 使能 ITR 指令执行 */
-    uint32 dscr_new = dscr | DSCR_ITR_EN;
-    ack = JTAG_APB_AP_Write(DBG_DSCR_ADDR, &dscr_new);
-    if (ack != DPACC_ACK_OK) {
-        return 3;  // 写 DSCR 失败
-    }
 
     /* 4. 通过 ITR 执行: MOV R0, PC */
     uint32 instruction = ARM_INSTR_MOV_R0_PC;
     sci_Printf("  [*] 写入 ITR: MOV R0, PC (0x%08X)\r\n", instruction);
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
     if (ack != DPACC_ACK_OK) {
-        return 4;  // 写 ITR 失败
+        return ack;  // 写 ITR 失败
     }
 
     /* 5. 通过 ITR 执行: MCR p14, 0, R0, c0, c5, 0 (将 R0 写入 DTRTX) */
@@ -891,13 +860,13 @@ uint32 JTAG_Read_PC(uint32* pc_value)
     sci_Printf("  [*] 写入 ITR: MCR R0->DTRTX (0x%08X)\r\n", instruction);
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
     if (ack != DPACC_ACK_OK) {
-        return 5;  // 写 ITR 失败
+        return ack;  // 写 ITR 失败
     }
 
     /* 6. 读取 DTRTX 获取 PC 值 */
     ack = JTAG_APB_AP_Read(DBG_DTRTX_ADDR, pc_value);
     if (ack != DPACC_ACK_OK) {
-        return 6;  // 读 DTRTX 失败
+        return ack;  // 读 DTRTX 失败
     }
 
     sci_Printf("  [*] 读取到 DTRTX = 0x%08X\r\n", *pc_value);

@@ -103,6 +103,19 @@ uint32 parse_IDCODE(uint32 idcode, const char* name);
     else {                                                                     \
         sci_Printf(msg_if_false, ##__VA_ARGS__);                               \
     }
+
+#define APACC_IR_REWRITE 1
+
+
+uint32 JTAG_Read_DSCR(uint32* dscr_value)
+{
+    return JTAG_APB_AP_Read(DBG_DSCR_ADDR, dscr_value);
+}
+
+uint32 JTAG_Read_DRCR(uint32* drcr_value)
+{
+    return JTAG_APB_AP_Read(DBG_DRCR_ADDR, drcr_value);
+}
 /* USER CODE END */
 
 int main(void)
@@ -327,8 +340,12 @@ int main(void)
         }
 
         /* ========== 通过 APB-AP 执行 CPU 指令写入内存 ========== */
-        sci_Printf(" [APB-AP] 通过 APB-AP 执行 CPU 指令写入内存...\r\n");
+        /* 注意: TMS570LC4357 是锁步核（Lockstep Core），无法通过 APB-AP 
+         * 访问 DTRRX/ITR 等调试寄存器来执行 CPU 指令写入 SRAM。
+         * 锁步核架构限制了这种调试功能，以下代码已禁用。
+         */
 #if 0
+        sci_Printf(" [APB-AP] 通过 APB-AP 执行 CPU 指令写入内存...\r\n");
         uint32 result = JTAG_APB_AP_Write_Memory(0x08000000, 0x11111111);
         if (result == 0) {
             sci_Printf("  [✓] APB-AP 写入内存成功！\r\n\r\n");
@@ -336,10 +353,37 @@ int main(void)
             sci_Printf("  [✗] APB-AP 写入内存失败，错误码: %d\r\n\r\n", result);
         }
 #endif
+#if 1
         uint32 cnt = 0;
         while (cnt > 10000) {
             cnt++;
         }
+
+        uint32 dscr = 0;
+        ack = JTAG_Read_DSCR(&dscr);
+        sci_Printf("      - 读 DSCR: 0x%08X (ACK=0x%X)\r\n", dscr, ack);
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+        uint32 dscr_new = dscr | DSCR_ITR_EN;
+        ack = JTAG_APB_AP_Write(DBG_DSCR_ADDR, &dscr_new);
+        sci_Printf("      - 写 DSCR: 0x%08X (ACK=0x%X)\r\n", dscr_new, ack);
+
+        ack = JTAG_Read_DSCR(&dscr);
+        sci_Printf("      - 读 DSCR: 0x%08X (ACK=0x%X)\r\n", dscr, ack);
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+        uint32 drcr = 0xfffffff;
+        ack = JTAG_Read_DRCR(&drcr);
+        sci_Printf("      - 读 DRCR: 0x%08X (ACK=0x%X)\r\n", drcr, ack);
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+
         // (2) DTRRX 地址写入 TAR
         dtrrx_addr = 0x80001080;
         ack = JTAG_APACC_Write(AP_REG_TAR, &dtrrx_addr);
@@ -398,18 +442,9 @@ int main(void)
         ack = JTAG_APACC_Write(AP_REG_DRW, &instruction);
         sci_Printf("      - 写 APB-AP.DRW: 0x%08X (ACK=0x%X)\r\n", instruction,
                    ack);
-
-        if(tmp == 1) {
-            drcr_addr = 0x80001090;
-            ack = JTAG_APACC_Write(AP_REG_TAR, &drcr_addr);
-            sci_Printf("      - 写 APB-AP.TAR: 0x%08X (ACK=0x%X)\r\n", drcr_addr,
-                       ack);
-            ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
-            JTAG_From_Pause_To_Select_DR_Scan();
-            sci_Printf("第 2 处：HALT 退出，CPU 继续运行，跳过后续步骤\r\n");
-            continue;
-        }
-
+#endif
+#if 0
+        // ===============================================
         // 向 JTAG-DP.SELECT 写 0x00000000
         // 选择 AHB-AP 并选择它的 bank0
         sci_Printf(" [10] 激活 AHB-AP...\r\n");
@@ -420,7 +455,6 @@ int main(void)
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
                              "  [✗] 写 DP.SELECT 失败\r\n\r\n",
                              "  [✓] AHB-AP 已激活！\r\n\r\n");
-
         sci_Printf(" [11] 进入 AHB-AP 访存模式...\r\n");
         JTAG_From_Pause_To_Select_DR_Scan();
         JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
@@ -455,8 +489,8 @@ int main(void)
         CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK,
                              "  [✗] 写 AHB-AP.TAR 失败\r\n\r\n",
                              "  [✓] AHB-AP.TAR 已设置为 AHB-AP 地址！\r\n\r\n");
-#if 0
-        sci_Printf(" [13] 从 FLASH 读取 bin 并写入备芯片 SRAM...\r\n");
+
+                             sci_Printf(" [13] 从 FLASH 读取 bin 并写入备芯片 SRAM...\r\n");
         sci_Printf("      - FLASH 源地址: 0x%08X\r\n", SRAM_BIN_FLASH_ADDR);
         sci_Printf("      - SRAM 目标地址: 0x%08X\r\n", TARGET_SRAM_BASE);
         sci_Printf("      - bin 大小: %d 字节 (%d 字)\r\n", SRAM_BIN_SIZE,
@@ -471,7 +505,8 @@ int main(void)
          * 循环写入每个 32 位字
          * 注意: CSW 已关闭自动递增，需要每次手动设置 TAR
          */
-        for (i = 0; i < SRAM_BIN_WORDS; i++) {
+        // for (i = 0; i < SRAM_BIN_WORDS; i++) {
+        for (i = 0; i < 1; i++) {
             /* 读取 FLASH 中的数据 */
             uint32 flash_data = flash_ptr[i];
             uint32 target_addr = TARGET_SRAM_BASE + i * 4;
@@ -547,7 +582,6 @@ int main(void)
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
 
-#if 1
         // 此前处于 pause 状态
         uint32 result = JTAG_Set_PC_And_Run(entry_addr);
 
@@ -566,7 +600,6 @@ int main(void)
             sci_Printf("        4 = 写入 ITR (BX) 失败\r\n");
             sci_Printf("        5 = 发送 RESTART 失败\r\n");
         }
-#endif
     }
     /* USER CODE END */
 
