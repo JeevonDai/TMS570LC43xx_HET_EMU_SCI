@@ -871,12 +871,19 @@ uint32 JTAG_Read_PC(uint32* pc_value)
 {
     uint32 ack = 0;
 
-    /* 1. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
+    /* 1. 切换成 DPACC */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+    /* 2. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
     uint32 select_value = 0x01000000;
     ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
     if (ack != DPACC_ACK_OK) {
         return ack;  // 写 SELECT 失败
     }
+
+    /* 3. 再次切换成 APACC */
     JTAG_From_Pause_To_Select_DR_Scan();
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
@@ -933,18 +940,25 @@ uint32 JTAG_Set_PC(uint32 pc_value)
 
     sci_Printf("  [JTAG_Set_PC] 设置 PC = 0x%08X\r\n", pc_value);
 
-    /* 1. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
+    /* 1. 切换成 DPACC */
+    JTAG_From_Pause_To_Select_DR_Scan();
+    JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                        DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
+
+    /* 2. 激活 APB-AP (SELECT) - 确保已选择 APB-AP */
     uint32 select_value = 0x01000000;
     ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
     if (ack != DPACC_ACK_OK) {
         sci_Printf("  [!] 写 SELECT 失败, ACK=%d\r\n", ack);
         return ack;  // 写 SELECT 失败
     }
+
+    /* 3. 切换成 APACC */
     JTAG_From_Pause_To_Select_DR_Scan();
     JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
                         DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
-    /* 2. 将 pc_value 写入 DTRRX */
+    /* 4. 将 pc_value 写入 DTRRX */
     sci_Printf("  [*] 写入 DTRRX = 0x%08X\r\n", pc_value);
     ack = JTAG_APB_AP_Write(DBG_DTRRX_ADDR, &pc_value);
     if (ack != DPACC_ACK_OK) {
@@ -952,7 +966,7 @@ uint32 JTAG_Set_PC(uint32 pc_value)
         return ack;  // 写 DTRRX 失败
     }
 
-    /* 3. 通过 ITR 执行: MRC p14, 0, R0, c0, c5, 0 (从 DTRRX 读取到 R0) */
+    /* 5. 通过 ITR 执行: MRC p14, 0, R0, c0, c5, 0 (从 DTRRX 读取到 R0) */
     instruction = ARM_INSTR_MRC_DTRRX_R0;
     sci_Printf("  [*] 写入 ITR: MRC DTRRX->R0 (0x%08X)\r\n", instruction);
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
@@ -966,7 +980,7 @@ uint32 JTAG_Set_PC(uint32 pc_value)
         return ack;  // 等待指令执行完成失败
     }
 
-    /* 4. 通过 ITR 执行: MOV PC, R0 (将 R0 写入 PC) */
+    /* 6. 通过 ITR 执行: MOV PC, R0 (将 R0 写入 PC) */
     instruction = ARM_INSTR_MOV_PC_R0;
     sci_Printf("  [*] 写入 ITR: MOV PC, R0 (0x%08X)\r\n", instruction);
     ack = JTAG_APB_AP_Write(DBG_ITR_ADDR, &instruction);
@@ -1001,7 +1015,7 @@ uint32 JTAG_Set_PC_And_Run(uint32 entry_addr)
     else {
         sci_Printf("读取 PC 失败，错误码: %d\r\n", result);
     }
-#if 0
+#if 1
     result = JTAG_Set_PC(entry_addr);
     if (result != 0) {
         sci_Printf("设置 PC 失败，错误码: %d\r\n", result);

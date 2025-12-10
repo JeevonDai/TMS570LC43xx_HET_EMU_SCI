@@ -348,9 +348,6 @@ int main(void)
         uint32 dscr = 0;
         ack = JTAG_Read_DSCR(&dscr);
         sci_Printf("      - 读 DSCR: 0x%08X (ACK=0x%X)\r\n", dscr, ack);
-        JTAG_From_Pause_To_Select_DR_Scan();
-        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 dscr_new = dscr | DSCR_ITR_EN;
         ack = JTAG_APB_AP_Write(DBG_DSCR_ADDR, &dscr_new);
@@ -358,17 +355,10 @@ int main(void)
 
         ack = JTAG_Read_DSCR(&dscr);
         sci_Printf("      - 读 DSCR: 0x%08X (ACK=0x%X)\r\n", dscr, ack);
-        JTAG_From_Pause_To_Select_DR_Scan();
-        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
 
         uint32 drcr = 0xfffffff;
         ack = JTAG_Read_DRCR(&drcr);
         sci_Printf("      - 读 DRCR: 0x%08X (ACK=0x%X)\r\n", drcr, ack);
-        JTAG_From_Pause_To_Select_DR_Scan();
-        JTAG_Write_IR_Pause(DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
-
 
         // (2) DTRRX 地址写入 TAR
         dtrrx_addr = 0x80001080;
@@ -446,6 +436,9 @@ int main(void)
         // ===============================================
         // 向 JTAG-DP.SELECT 写 0x00000000
         // 选择 AHB-AP 并选择它的 bank0
+        JTAG_From_Pause_To_Select_DR_Scan();
+        JTAG_Write_IR_Pause(DAP_IR_DPACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
+                            DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
         sci_Printf(" [10] 激活 AHB-AP...\r\n");
         select_value = 0x00000000;
         ack = JTAG_DPACC_Write(DP_ADDR_SELECT, select_value);
@@ -521,10 +514,6 @@ int main(void)
             }
 
             /* 再写入数据到 DRW */
-            JTAG_From_Pause_To_Select_DR_Scan();
-            JTAG_Write_IR_Pause(
-                DAP_IR_APACC | ICEPICK_IR_BYPASS << DAP_IR_LENGTH,
-                DAP_IR_LENGTH + ICEPICK_IR_LENGTH);
             ack = JTAG_APACC_Write(AP_REG_DRW, &flash_data);
 
             if (ack != DPACC_ACK_OK) {
@@ -565,8 +554,8 @@ int main(void)
          */
         // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
         // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
-        // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
-        uint32 entry_addr = 0x00000000;
+        uint32 entry_addr = 0x080087dc - 8;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        // uint32 entry_addr = 0x00000000;
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
@@ -580,14 +569,6 @@ int main(void)
             sci_Printf("  [✗] 启动失败，错误码: %d\r\n", result);
         }
         sci_Printf("====================================\r\n\r\n");
-
-        if (tmp == 1) {    
-            ack = JTAG_APACC_Write(AP_REG_DRW, &halt_value);
-            CONTINUE_IF_MSG_FULL(ack != DPACC_ACK_OK, "  [✗] 写 DRCR 失败\r\n\r\n",
-                                 "  [✓] AP_REG_DRW 已配置 HALT 请求！\r\n\r\n");
-            halt_value = 0x1;
-            sci_Printf("HALT 退出，CPU 继续运行，只有第一次\r\n");
-        }
 #endif
     }
     /* USER CODE END */
