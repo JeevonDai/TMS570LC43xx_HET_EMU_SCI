@@ -339,21 +339,8 @@ int main(void)
             continue;
         }
 
-        /* ========== 通过 APB-AP 执行 CPU 指令写入内存 ========== */
-        /* 注意: TMS570LC4357 是锁步核（Lockstep Core），无法通过 APB-AP 
-         * 访问 DTRRX/ITR 等调试寄存器来执行 CPU 指令写入 SRAM。
-         * 锁步核架构限制了这种调试功能，以下代码已禁用。
-         */
-#if 0
-        sci_Printf(" [APB-AP] 通过 APB-AP 执行 CPU 指令写入内存...\r\n");
-        uint32 result = JTAG_APB_AP_Write_Memory(0x08000000, 0x11111111);
-        if (result == 0) {
-            sci_Printf("  [✓] APB-AP 写入内存成功！\r\n\r\n");
-        } else {
-            sci_Printf("  [✗] APB-AP 写入内存失败，错误码: %d\r\n\r\n", result);
-        }
-#endif
 #if 1
+        /* ========== 通过 APB-AP 执行 CPU 指令写入内存 ========== */
         uint32 cnt = 0;
         while (cnt < 10000) {
             cnt++;
@@ -456,7 +443,7 @@ int main(void)
             sci_Printf("      - STR R0,[R1] 指令执行完成\r\n");
         }
 #endif
-#if 0
+#if 1
         // ===============================================
         // 向 JTAG-DP.SELECT 写 0x00000000
         // 选择 AHB-AP 并选择它的 bank0
@@ -503,7 +490,7 @@ int main(void)
                              "  [✗] 写 AHB-AP.TAR 失败\r\n\r\n",
                              "  [✓] AHB-AP.TAR 已设置为 AHB-AP 地址！\r\n\r\n");
 
-                             sci_Printf(" [13] 从 FLASH 读取 bin 并写入备芯片 SRAM...\r\n");
+        sci_Printf(" [13] 从 FLASH 读取 bin 并写入备 BMU 的 SRAM...\r\n");
         sci_Printf("      - FLASH 源地址: 0x%08X\r\n", SRAM_BIN_FLASH_ADDR);
         sci_Printf("      - SRAM 目标地址: 0x%08X\r\n", TARGET_SRAM_BASE);
         sci_Printf("      - bin 大小: %d 字节 (%d 字)\r\n", SRAM_BIN_SIZE,
@@ -518,8 +505,7 @@ int main(void)
          * 循环写入每个 32 位字
          * 注意: CSW 已关闭自动递增，需要每次手动设置 TAR
          */
-        // for (i = 0; i < SRAM_BIN_WORDS; i++) {
-        for (i = 0; i < 1; i++) {
+        for (i = 0; i < SRAM_BIN_WORDS; i++) {
             /* 读取 FLASH 中的数据 */
             uint32 flash_data = flash_ptr[i];
             uint32 target_addr = TARGET_SRAM_BASE + i * 4;
@@ -537,7 +523,7 @@ int main(void)
             if (ack != DPACC_ACK_OK) {
                 write_errors++;
                 if (write_errors <= 5) {
-                    sci_Printf("  [✗] 设置TAR失败 @0x%08X (ACK=0x%X)\r\n",
+                    sci_Printf("  [✗] 设置 TAR 失败 @0x%08X (ACK=0x%X)\r\n",
                                target_addr, ack);
                 }
                 continue;
@@ -588,8 +574,8 @@ int main(void)
          */
         // uint32 entry_addr = TARGET_SRAM_BASE;  /* 0x08000000 */
         // ENTRY POINT SYMBOL: "_c_int00"  address: 080087dc
-        // uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
-        uint32 entry_addr = 0x00000000;
+        uint32 entry_addr = 0x080087dc;  /* 中断向量表第一条指令是跳转到 _c_int00 的分支指令 */
+        // uint32 entry_addr = 0x00000000;
         sci_Printf("      - 程序入口地址: 0x%08X\r\n", entry_addr);
 
         sci_Printf(" [15] 设置 PC 并启动 SRAM 程序...\r\n");
